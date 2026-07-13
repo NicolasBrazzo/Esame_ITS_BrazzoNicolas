@@ -15,14 +15,14 @@ import { useGSAP } from "@gsap/react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ThemeToggle } from "../components/ThemeToggle";
-import Prism from "../components/Prism";
+import LightRays from "../components/LightRays";
 import { useAuth } from "../context/AuthContext";
 import { APP_NAME, APP_LOGO, HOME } from "../constants/app";
 
 gsap.registerPlugin(useGSAP);
 
-// Se l'utente ha chiesto "riduci movimento" il Prism viene congelato
-// (timeScale/noise a 0): resta un fotogramma statico invece di animare.
+// Se l'utente ha chiesto "riduci movimento" i raggi vengono congelati
+// (raysSpeed/distortion a 0): resta un fotogramma statico invece di animare.
 const prefersReducedMotion =
   typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
@@ -63,7 +63,7 @@ export const HomePage = () => {
           defaults: { ease: "power4.out", duration: 0.9 },
         });
         intro
-          .from(".js-prism", { autoAlpha: 0, duration: 1.4, ease: "power2.out" }, 0)
+          .from(".js-rays", { autoAlpha: 0, duration: 1.4, ease: "power2.out" }, 0)
           .from(".js-topbar", { autoAlpha: 0, y: -16, duration: 0.6 }, 0.3)
           .from(".js-eyebrow", { autoAlpha: 0, y: 12, scale: 0.92, duration: 0.5 }, "-=0.35")
           .from(".js-word", { yPercent: 120, rotation: 5, stagger: 0.055 }, "-=0.3")
@@ -185,35 +185,35 @@ export const HomePage = () => {
   return (
     // La landing usa gli stessi token shadcn del gestionale (nessuna palette
     // a parte) ed è theme-responsive: con il tema scuro --background diventa
-    // scuro e lo scrim scurisce l'hero. Il Prism WebGL mantiene i suoi colori
-    // e lo scrim garantisce il contrasto del testo in entrambi i temi.
+    // scuro e lo scrim scurisce l'hero. I LightRays WebGL mantengono i loro
+    // colori e lo scrim garantisce il contrasto del testo in entrambi i temi.
     <div ref={scope} className="relative min-h-screen overflow-hidden bg-background text-foreground">
-      {/* Sfondo animato: prisma WebGL (React Bits) confinato alla prima
-          schermata; non cattura il puntatore così CTA e finestra restano
-          interattive. Sospeso quando esce dal viewport per risparmiare GPU. */}
+      {/* Sfondo animato: raggi di luce WebGL (React Bits) confinati alla
+          prima schermata; non catturano il puntatore così CTA e finestra
+          restano interattive. Il colore riprende l'accento indigo dell'app;
+          il componente si sospende da solo quando esce dal viewport. */}
       <div
         aria-hidden="true"
-        className="js-prism pointer-events-none absolute inset-x-0 top-0 h-screen"
+        className="js-rays pointer-events-none absolute inset-x-0 top-0 h-screen"
       >
-        <Prism
-          animationType="rotate"
-          timeScale={prefersReducedMotion ? 0 : 0.4}
-          scale={3.2}
-          glow={1}
-          bloom={1.1}
-          noise={prefersReducedMotion ? 0 : 0.35}
-          hueShift={0.32}
-          colorFrequency={1}
-          offset={{ x: 0, y: 90 }}
-          suspendWhenOffscreen
+        <LightRays
+          raysOrigin="top-center"
+          raysColor="#818cf8"
+          raysSpeed={prefersReducedMotion ? 0 : 1}
+          lightSpread={0.9}
+          rayLength={1.4}
+          followMouse={!prefersReducedMotion}
+          mouseInfluence={0.08}
+          noiseAmount={prefersReducedMotion ? 0 : 0.06}
+          distortion={prefersReducedMotion ? 0 : 0.04}
         />
       </div>
 
-      {/* Scrim: attenua il prisma dove c'è il testo e sfuma nel fondo pieno
+      {/* Scrim: attenua i raggi dove c'è il testo e sfuma nel fondo pieno
           prima della finestra dimostrativa, mantenendo il contrasto. */}
       <div
         aria-hidden="true"
-        className="js-prism pointer-events-none absolute inset-x-0 top-0 h-screen bg-linear-to-b from-background/70 via-background/25 to-background"
+        className="js-rays pointer-events-none absolute inset-x-0 top-0 h-screen bg-linear-to-b from-background/15 via-background/40 to-background"
       />
 
 
