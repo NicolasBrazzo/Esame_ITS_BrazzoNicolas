@@ -7,10 +7,6 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(undefined);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    checkAuth();
-  }, []);
-
   // Valida il token salvato chiedendo al backend i dati dell'utente
   const checkAuth = async () => {
     const token = localStorage.getItem("token");
@@ -43,6 +39,10 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
 
   const login = async (credentials) => {
     try {

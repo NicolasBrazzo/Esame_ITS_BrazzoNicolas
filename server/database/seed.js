@@ -20,7 +20,8 @@ const SALT_ROUNDS = Number(process.env.SALT_ROUNDS) || 10;
 
 const USERS_TABLE = "T_Users";
 
-// Utenti di test: 1 admin + 1 utente ordinario.
+// Utenti di test: 1 admin + 2 utenti ordinari (due servono a dimostrare le
+// regole di visibilità: ogni utente vede solo i propri dati di dominio).
 // Password conformi a validatePassword (min 6 char, maiuscola, numero, speciale).
 const SEED_USERS = [
   {
@@ -35,6 +36,13 @@ const SEED_USERS = [
     password: "Utente123!",
     isAdmin: false,
     first_name: "Ugo",
+    last_name: "Utente",
+  },
+  {
+    email: "utente2@test.it",
+    password: "Utente123!",
+    isAdmin: false,
+    first_name: "Vera",
     last_name: "Utente",
   },
 ];

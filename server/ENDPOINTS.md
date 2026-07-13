@@ -13,6 +13,19 @@ Nel repo è committata la collection [`postman_collection.json`](./postman_colle
 backend) e `{{token}}`, valorizzata automaticamente dopo Login/Register.
 Se aggiungi o modifichi un endpoint, aggiorna anche la collection.
 
+## Credenziali di test (seed)
+
+Utenti creati da `npm run seed` (da dentro `server/`; idempotente, rieseguibile):
+
+| Email | Password | Ruolo |
+|-------|----------|-------|
+| `admin@test.it` | `Admin123!` | Amministratore |
+| `utente@test.it` | `Utente123!` | Utente ordinario |
+| `utente2@test.it` | `Utente123!` | Utente ordinario |
+
+> Due utenti ordinari servono a dimostrare le regole di visibilità
+> (ogni utente vede solo i propri dati nelle risorse di dominio).
+
 ## Convenzioni generali
 
 - **Base URL**: definito dalla porta del server (`PORT`, default `3000`). Es. `http://localhost:3000`.

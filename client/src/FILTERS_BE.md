@@ -1,192 +1,180 @@
-# FILTERS_BE.md — Convenzioni per API di elenco con paginazione, filtri e ordinamento
+# FILTERS_BE.md — Convenzioni per API di elenco con filtri
 
-Questo file definisce lo standard con cui implementare gli endpoint di elenco (*list*) nel backend. Stack di riferimento: **Node.js + Express**, database **Supabase** (client `supabase-js`).
+Questo file definisce lo standard con cui implementare gli endpoint di elenco (*list*) con filtri nel backend. Stack di riferimento: **Node.js + Express**, database **Supabase** (client `supabase-js`).
 
-Quando questo file viene referenziato (es. *"crea l'API con i filtri, usa @FILTERS_BE.md"*), l'endpoint **DEVE** rispettare tutte le regole seguenti: contratto dei parametri, forma della risposta, implementazione Supabase e gestione dei casi limite.
+Quando questo file viene referenziato (es. *"crea l'API con i filtri, usa @FILTERS_BE.md"*), l'endpoint **DEVE** rispettare tutte le regole seguenti: contratto dei parametri, forma della risposta, implementazione e gestione dei casi limite.
 
 ---
 
 ## 1. Principio
 
-Un endpoint di elenco **non restituisce mai l'intero insieme di dati**. Restituisce una pagina alla volta. Tutti i parametri di paginazione, filtro e ordinamento viaggiano nella *query string* dell'URL (è una `GET`, quindi niente body).
+Un endpoint di elenco accetta filtri **opzionali** nella *query string* dell'URL (è una `GET`, quindi niente body). Un filtro assente non viene applicato; senza nessun filtro l'endpoint restituisce tutte le righe visibili all'utente.
+
+L'ordinamento interattivo (click sulle intestazioni) è gestito **lato client** da `DataTable`: il backend si limita a restituire le righe in un ordine stabile.
 
 Esempio di richiesta completa:
 
 ```http
-GET /api/requests?status=pending&page=2&limit=20&sort=created_at&order=desc
+GET /richieste?stato=aperta&mese=2026-07
 ```
 
 ---
 
 ## 2. Contratto dei parametri (query string)
 
-| Parametro | Tipo   | Default      | Descrizione                                              |
-|-----------|--------|--------------|----------------------------------------------------------|
-| `page`    | int    | `1`          | Pagina richiesta (1-based).                              |
-| `limit`   | int    | `20`         | Elementi per pagina. Va limitato a un massimo (es. 100). |
-| `sort`    | string | `created_at` | Campo di ordinamento. Va validato contro una whitelist.  |
-| `order`   | string | `desc`       | `asc` oppure `desc`. Qualsiasi altro valore → `desc`.    |
-| filtri    | vari   | —            | Es. `status`, `user_id`. Ognuno è opzionale.             |
+Ogni filtro è **opzionale** e arriva sempre come **stringa**. Esempi tipici:
+
+| Parametro | Esempio      | Come si applica                                          |
+|-----------|--------------|----------------------------------------------------------|
+| `stato`   | `aperta`     | `.eq('stato', valore)` — valore validato contro whitelist |
+| `user_id` | uuid         | `.eq('user_id', valore)`                                  |
+| `mese`    | `2026-07`    | intervallo di date sul mese (vedi implementazione)        |
+| ricerca   | `mario`      | `.ilike('campo', %valore%)` — case-insensitive            |
 
 ### Regole obbligatorie
 
-- I parametri arrivano sempre come **stringa**: fare `parseInt` su `page` e `limit`.
-- Applicare i **default** se il parametro manca o non è valido (mai crashare).
-- `limit` va **cappato** a un massimo per evitare che un client chieda 999999 elementi.
-- `sort` e `order` vanno validati contro una **whitelist**: mai passare al DB un nome di colonna arbitrario che arriva dal client (rischio di errori e di abuso).
+- Applicare un filtro **solo se il parametro è presente** nella query string.
+- I valori a insieme chiuso (es. `stato`) vanno validati contro una **whitelist** nel controller: valore non ammesso → `400` con errore in italiano.
+- L'`.order()` deve esserci **sempre** (tipicamente `created_at` discendente): senza un ordinamento stabile l'elenco può cambiare ordine tra una chiamata e l'altra.
+- **Regole di visibilità prima dei filtri**: se l'utente non-admin può vedere solo le proprie righe, il controller forza `user_id = req.user.sub` a prescindere dai filtri richiesti. Il filtro `user_id` scelto liberamente è riservato all'admin.
 
 ---
 
 ## 3. Forma della risposta (OBBLIGATORIA)
 
-La risposta è sempre un oggetto con due chiavi: `data` e `pagination`.
+La risposta segue la convenzione del template: `{ ok: true, ... }` in successo, `{ ok: false, error }` in errore.
 
 ```json
 {
-  "data": [ /* array degli elementi della pagina corrente */ ],
-  "pagination": {
-    "total": 4350,
-    "page": 2,
-    "limit": 20,
-    "totalPages": 218
-  }
+  "ok": true,
+  "richieste": [ /* array delle righe che soddisfano i filtri */ ]
 }
 ```
 
-- `data`: array degli elementi della pagina corrente.
-- `pagination.total`: numero totale di elementi che soddisfano i filtri (**NON** solo quelli della pagina). Serve al frontend per calcolare quante pagine disegnare.
-- `pagination.totalPages`: `Math.ceil(total / limit)`. Usare `ceil`, mai `floor`, altrimenti si perde l'ultima pagina parziale.
-
-> Il codice di stato HTTP viaggia nella risposta HTTP (`res.status(...)`), **mai** dentro il body JSON.
+- Nessun risultato → `200` con array vuoto, **non** un errore.
+- Il codice di stato HTTP viaggia nella risposta HTTP (`res.status(...)`), **mai** dentro il body JSON.
 
 ---
 
-## 4. Calcolo del range
+## 4. Implementazione di riferimento
 
-Il numero di righe da saltare è: `offset = (page - 1) * limit`.
+Rispetta la separazione del template: il **model** costruisce la query Supabase, il **controller** valida e risponde.
 
-Supabase usa `.range(from, to)` con estremi **inclusi** su entrambi i lati, quindi:
+### Model (`models/<risorsa>.model.js`)
 
 ```js
-from = (page - 1) * limit
-to   = from + limit - 1
+// Ogni filtro viene applicato solo se presente
+const findAllRichieste = async (filters = {}) => {
+  let query = supabase
+    .from(TABLE_NAME)
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (filters.stato) query = query.eq("stato", filters.stato);
+  if (filters.user_id) query = query.eq("user_id", filters.user_id);
+
+  if (filters.mese) {
+    // mese = "YYYY-MM" → dal 1° del mese (incluso) al 1° del mese dopo (escluso)
+    const [anno, mm] = filters.mese.split("-").map(Number);
+    const inizio = `${filters.mese}-01`;
+    const fine =
+      mm === 12
+        ? `${anno + 1}-01-01`
+        : `${anno}-${String(mm + 1).padStart(2, "0")}-01`;
+    query = query.gte("data", inizio).lt("data", fine);
+  }
+
+  const { data, error } = await query;
+  if (error) throw new Error("DATABASE_FIND_ERROR");
+  return data;
+};
 ```
 
-Esempio con `page=3`, `limit=20`: `from = 40`, `to = 59` → elementi dal 41° al 60°.
-
----
-
-## 5. Implementazione di riferimento (Express + Supabase)
+### Controller (`controllers/<risorsa>.controller.js`)
 
 ```js
-// Whitelist dei campi ordinabili: previene ordinamenti su colonne arbitrarie
-const SORTABLE_FIELDS = ['created_at', 'amount', 'status'];
-const MAX_LIMIT = 100;
+const STATI_VALIDI = ["aperta", "chiusa"]; // whitelist del progetto
 
-app.get('/api/requests', async (req, res) => {
+router.get("/", protect, async (req, res) => {
   try {
-    // 1. Parsing + default + clamp
-    const page  = Math.max(1, parseInt(req.query.page) || 1);
-    const limit = Math.min(MAX_LIMIT, Math.max(1, parseInt(req.query.limit) || 20));
+    const { stato, mese, user_id } = req.query;
 
-    // 2. Ordinamento validato
-    const sort  = SORTABLE_FIELDS.includes(req.query.sort) ? req.query.sort : 'created_at';
-    const order = req.query.order === 'asc' ? 'asc' : 'desc';
-
-    // 3. Calcolo del range (estremi inclusi)
-    const from = (page - 1) * limit;
-    const to   = from + limit - 1;
-
-    // 4. Query base con conteggio totale esatto
-    //    { count: 'exact' } fa restituire a Supabase il totale che soddisfa i filtri
-    let query = supabase
-      .from('requests')
-      .select('*', { count: 'exact' });
-
-    // 5. Filtri (applicati SOLO se presenti nella query string)
-    if (req.query.status) {
-      query = query.eq('status', req.query.status);
-    }
-    if (req.query.user_id) {
-      query = query.eq('user_id', req.query.user_id);
+    // Whitelist sui valori a insieme chiuso
+    if (stato && !STATI_VALIDI.includes(stato)) {
+      return res.status(400).json({ ok: false, error: "Stato non valido" });
     }
 
-    // 6. Ordinamento + paginazione (dopo i filtri)
-    query = query
-      .order(sort, { ascending: order === 'asc' })
-      .range(from, to);
+    // Visibilità: il non-admin vede solo le proprie righe,
+    // l'admin può filtrare per utente (o vedere tutto)
+    const filters = { stato, mese };
+    filters.user_id = req.user.isAdmin ? user_id : req.user.sub;
 
-    // 7. Esecuzione
-    const { data, count, error } = await query;
-    if (error) {
-      return res.status(500).json({ error: 'Errore nel recupero dei dati' });
-    }
-
-    // 8. Risposta nel formato standard
-    res.status(200).json({
-      data,
-      pagination: {
-        total: count,
-        page,
-        limit,
-        totalPages: Math.ceil(count / limit)
-      }
-    });
+    const richieste = await findAllRichieste(filters);
+    return res.status(200).json({ ok: true, richieste });
   } catch (err) {
-    res.status(500).json({ error: 'Errore interno del server' });
+    console.error("GET ALL RICHIESTE ERROR:", err);
+    return res.status(500).json({ ok: false, error: "Errore interno del server" });
   }
 });
 ```
 
-### Note importanti sull'implementazione Supabase
+### Note sull'implementazione Supabase
 
-- `{ count: 'exact' }` nel `.select()` fa sì che `count` contenga il totale che soddisfa i filtri applicati. Questo sostituisce la doppia query (dati + `COUNT(*)`) che si userebbe in SQL puro: Supabase restituisce dati e conteggio in un'unica chiamata.
-- Il `count` **rispetta i filtri**: se applichi `.eq('status', 'pending')`, `count` conta solo le richieste pending. Corretto, è esattamente ciò che serve al frontend.
-- L'`.order()` deve esserci **sempre**: senza un ordinamento stabile, il `range` può restituire doppioni o buchi tra una pagina e l'altra.
-- I filtri (`.eq`, `.gte`, `.ilike`, ecc.) usano parametri gestiti dal client Supabase, quindi non c'è rischio di SQL injection concatenando stringhe.
+- I filtri (`.eq`, `.gte`, `.lt`, `.ilike`, ecc.) usano parametri gestiti dal client Supabase, quindi non c'è rischio di SQL injection concatenando stringhe.
+- Il filtro mese usa `gte` + `lt` (primo giorno del mese successivo **escluso**): funziona per qualunque mese senza contare i giorni.
 
 ---
 
-## 6. Filtri: regola d'oro
+## 5. Lato frontend
 
-Il conteggio totale deve riflettere gli **stessi filtri** applicati ai dati. Con Supabase questo è automatico perché `count` viene calcolato sulla stessa query filtrata. Se un domani si passasse a SQL puro, ricordarsi di applicare lo stesso `WHERE` sia alla query dei dati sia alla query di `COUNT(*)`.
+Il giro completo usa pezzi già presenti nel template: `FilterBar` (barra filtri config-driven) + `useFetch` con i filtri nelle deps + service che passa i filtri come query params.
 
-Filtri comuni e operatori Supabase corrispondenti:
+```jsx
+// Nella pagina
+const FILTERS = [
+  { key: "stato", label: "Stato", options: [{ value: "aperta", label: "Aperta" }, ...] },
+  { key: "mese", label: "Mese", type: "month" },
+];
 
-- **uguaglianza:** `.eq('campo', valore)`
-- **maggiore/uguale, minore/uguale:** `.gte(...)`, `.lte(...)`
-- **ricerca testuale case-insensitive:** ``.ilike('campo', `%${valore}%`)``
-- **valore in un insieme:** `.in('campo', [a, b, c])`
+const [filters, setFilters] = useState({ stato: "", mese: "" });
+
+// Al cambio di un filtro, useFetch rilancia la chiamata da solo (deps)
+const { data, isLoading, error } = useFetch(() => fetchRichieste(filters), [filters]);
+
+<FilterBar filters={FILTERS} values={filters} onChange={setFilters} />
+```
+
+```js
+// Nel service: stringa vuota = filtro non attivo, quindi va rimossa
+export const fetchRichieste = async (filters = {}) => {
+  const params = Object.fromEntries(
+    Object.entries(filters).filter(([, value]) => value !== ""),
+  );
+  const res = await api.get("/richieste", { params });
+  return res.data.richieste;
+};
+```
 
 ---
 
-## 7. Casi limite da gestire
+## 6. Casi limite da gestire
 
-- `page` o `limit` mancanti / non numerici → usare i **default**.
-- `page` oltre l'ultima pagina → `data` sarà `[]` (array vuoto), **non** un errore. Stato `200`.
-- `limit` esagerato → cappato a `MAX_LIMIT`.
-- `sort` non in whitelist → fallback su `created_at`.
-- Errore del database → stato `500` con body `{ "error": "..." }`.
+- Nessun filtro nella query string → tutte le righe visibili all'utente.
+- Valore fuori whitelist (es. `stato=xyz`) → `400` con `{ ok: false, error }`.
+- Nessuna riga soddisfa i filtri → `200` con array vuoto.
+- Errore del database → `500` con `{ ok: false, error }`.
 
 ---
 
-## 8. Checklist di conformità
+## 7. Checklist di conformità
 
 Un endpoint è conforme a questo standard se:
 
-- [ ] Accetta `page`, `limit`, `sort`, `order` più eventuali filtri, tutti dalla query string.
-- [ ] Applica default e clamp; non crasha su input mancante o invalido.
-- [ ] Valida `sort` contro una whitelist e `order` a `asc`/`desc`.
-- [ ] Usa `.range((page-1)*limit, (page-1)*limit + limit - 1)`.
+- [ ] Tutti i filtri sono opzionali e viaggiano nella query string.
+- [ ] Ogni filtro è applicato solo se presente.
+- [ ] I valori a insieme chiuso sono validati contro una whitelist nel controller.
+- [ ] Le regole di visibilità (non-admin → solo proprie righe) sono forzate nel controller, prima dei filtri richiesti.
 - [ ] Ordina sempre i risultati (`.order(...)`).
-- [ ] Restituisce `{ data, pagination: { total, page, limit, totalPages } }`.
-- [ ] `total` rispetta i filtri (via `{ count: 'exact' }`).
-- [ ] `totalPages` calcolato con `Math.ceil`.
+- [ ] Restituisce `{ ok: true, <risorsa>: [...] }`; lista vuota → `200` con array vuoto.
 - [ ] Codice di stato nell'HTTP, mai nel body.
-- [ ] Errori DB → `500` con body `{ error }`.
-
----
-
-## Appendice — Nota su offset vs cursor
-
-Questo standard usa la paginazione **offset-based** (`page` + `limit` → `.range()`), ideale per la maggior parte dei casi. Su volumi molto grandi (centinaia di migliaia di righe) l'offset alto diventa lento perché il DB deve comunque scorrere tutte le righe saltate. In quel caso si passa a paginazione **cursor-based** (si pagina a partire dall'ultimo valore visto, es. `created_at < ultimo_valore`). Non è richiesto qui, ma è la direzione da prendere se le performance con offset alti diventassero un problema.
+- [ ] Errori DB → `500` con `{ ok: false, error }`.

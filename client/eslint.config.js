@@ -26,4 +26,15 @@ export default defineConfig([
       'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
     },
   },
+  // vite.config.js gira in Node, dove __dirname è definito
+  {
+    files: ['vite.config.js'],
+    languageOptions: { globals: globals.node },
+  },
+  // Primitive shadcn/ui e context esportano anche varianti/hook oltre ai
+  // componenti: il vincolo del fast-refresh qui non si applica
+  {
+    files: ['src/components/ui/**', 'src/context/**'],
+    rules: { 'react-refresh/only-export-components': 'off' },
+  },
 ])

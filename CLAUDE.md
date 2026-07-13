@@ -18,7 +18,7 @@ Deployment (Railway for the server, Vercel for the client) is documented step-by
 
 **New resources:**
 - To add a new resource (table + endpoints + page), follow the step-by-step recipe in [`ADDING_A_RESOURCE.md`](ADDING_A_RESOURCE.md). The live reference implementation of the full pattern is the **Users** resource (`server/controllers/users.controller.js` + `client/src/pages/Users.jsx`).
-- For list endpoints with query-string filters, pagination, or sorting, follow the conventions and reference implementation in [`client/src/FILTERS_BE.md`](client/src/FILTERS_BE.md).
+- For list endpoints with query-string filters, follow the conventions and reference implementation in [`client/src/FILTERS_BE.md`](client/src/FILTERS_BE.md). List endpoints do NOT paginate: data volumes are small and sorting is client-side (`DataTable`) — do not introduce pagination unless the user explicitly asks for it.
 
 **Endpoints:**
 - Whenever you need to consult the API to debug an issue or to add/modify routes, always read [`server/ENDPOINTS.md`](server/ENDPOINTS.md) first — it is the reference for every backend route.

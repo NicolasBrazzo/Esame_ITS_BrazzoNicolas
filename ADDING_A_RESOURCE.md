@@ -5,8 +5,8 @@ partendo dal template. I passi sono sempre gli stessi; l'esempio vivo del
 pattern completo è la risorsa **Utenti** (`server/controllers/users.controller.js`
 + `client/src/pages/Users.jsx`).
 
-> Se la risorsa espone un elenco con filtri, paginazione o ordinamento,
-> segui le convenzioni in [`client/src/FILTERS_BE.md`](client/src/FILTERS_BE.md).
+> Se la risorsa espone un elenco con filtri, segui le convenzioni in
+> [`client/src/FILTERS_BE.md`](client/src/FILTERS_BE.md).
 
 ## 1. Database (Supabase)
 
@@ -47,6 +47,8 @@ pattern completo è la risorsa **Utenti** (`server/controllers/users.controller.
    - `useFetch` per la lista + `useMutation` per create/update/delete;
    - sottocomponente `*Form` inline guidato da `formState` locale;
    - `Modal` per crea/modifica e un altro per il dettaglio;
+   - eventuali azioni per riga oltre a modifica/elimina (es. cambi di stato):
+     colonna con `render` custom in `DataTable` che mostra i bottoni;
    - validazione client-side dentro la mutation fn (throw per far emergere
      l'errore) usando i validator di `src/utils/validators/`;
    - `refetch()` in `onSuccess` + toast (`showSuccess`/`showError`).

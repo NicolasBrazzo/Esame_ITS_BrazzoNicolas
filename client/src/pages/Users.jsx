@@ -18,6 +18,7 @@ import { ROLE_LABELS } from "../constants/app";
 import { useFetch } from "../hooks/useFetch";
 import { useMutation } from "../hooks/useMutation";
 import { validateEmail, validatePassword, validateName } from "../utils/validators";
+import { formatDate } from "../utils/formatters";
 import { DataTable } from "../components/DataTable";
 
 const UsersForm = ({ initialData, onSubmit, error }) => {
@@ -133,12 +134,7 @@ const UserDetails = ({ user }) => {
       USERS_COLUMN_LABELS.isAdmin,
       user.isAdmin ? ROLE_LABELS.admin : ROLE_LABELS.user,
     ],
-    [
-      USERS_COLUMN_LABELS.created_at,
-      user.created_at
-        ? new Date(user.created_at).toLocaleDateString("it-IT")
-        : "—",
-    ],
+    [USERS_COLUMN_LABELS.created_at, formatDate(user.created_at)],
   ];
 
   return (
