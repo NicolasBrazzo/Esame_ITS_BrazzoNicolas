@@ -98,7 +98,7 @@ const UsersForm = ({ initialData, onSubmit, error }) => {
           <p className="text-xs text-muted-foreground">Lascia vuoto per mantenere la password attuale.</p>
         )}
       </div>
-      <div className="flex items-center gap-3 rounded-md border border-input px-3 py-2.5">
+      {/* <div className="flex items-center gap-3 rounded-md border border-input px-3 py-2.5">
         <input
           type="checkbox"
           id="isAdmin"
@@ -110,7 +110,7 @@ const UsersForm = ({ initialData, onSubmit, error }) => {
         <Label htmlFor="isAdmin" className="cursor-pointer">
           {ROLE_LABELS.admin}
         </Label>
-      </div>
+      </div> */}
 
       {error && <p className="text-sm text-destructive font-medium">{error}</p>}
       <div className="flex justify-end space-x-2 pt-1">
@@ -186,11 +186,14 @@ export const Users = () => {
   const [viewingItem, setViewingItem] = useState(null);
 
   const {
-    data: users,
+    data: allUsers,
     isLoading,
     error,
     refetch,
   } = useFetch(() => fetchUsers(), []);
+
+  // Filtro frontend: in questa pagina si vogliono vedere solo i lavoratori (utenti non Admin)
+  const users = allUsers?.filter((user) => !user.isAdmin);
 
   const {
     mutate: saveUser,
@@ -268,7 +271,7 @@ export const Users = () => {
         <div>
           <h1 className="text-2xl font-semibold">Utenti</h1>
           <p className="text-sm text-muted-foreground">
-            Visualizza, modifica e elimina gli utenti
+            Visualizza, modifica e elimina i lavoratori (utenti non Admin)
           </p>
         </div>
         <Button
@@ -306,7 +309,7 @@ export const Users = () => {
 
       {!isLoading && !error && !hasUsers && (
         <p className="text-sm text-muted-foreground">
-          Nessuno utente presente nel database.
+          Nessun lavoratore (utente non Admin) presente nel database.
         </p>
       )}
 

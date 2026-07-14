@@ -15,10 +15,10 @@ import { ThemeToggle } from "./ThemeToggle";
 // Voci di menu: aggiungere qui le pagine delle risorse del progetto.
 const MENU_ITEMS = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/dashboard" },
-  { icon: UserPlus, label: "Utenti", path: "/users" },
   { icon: BookOpen, label: "Corsi", path: "/courses" },
   { icon: ClipboardList, label: "Assegnazioni", path: "/assignments" },
   { icon: BarChart3, label: "Statistiche", path: "/stats" },
+  { icon: UserPlus, label: "Utenti", path: "/users" },
 ];
 
 // Pagine riservate al referente academy. "/courses" è di tutti: un dipendente ci
