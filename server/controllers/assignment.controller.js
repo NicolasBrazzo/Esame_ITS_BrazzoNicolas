@@ -22,6 +22,7 @@ const VALID_STATUSES = ["assigned", "completed", "expired", "cancelled"];
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_REGEX = /^\d{4}-\d{2}$/;
+const YEAR_REGEX = /^\d{4}$/;
 
 // Le date del dominio sono `date` (non timestamp): il formato ISO YYYY-MM-DD si
 // confronta lessicograficamente, quindi le regole assigned_at/due_date/completed_at
@@ -45,10 +46,10 @@ const withDerivedStatus = (assignment) =>
   isExpired(assignment) ? { ...assignment, status: "expired" } : assignment;
 
 // Get All Assignments — admin: tutti gli assignment. Dipendente: solo i propri assignment.
-// Con filtri per: Stato, categoria, corso, mese di scadenza, dipendente (solo referenti academy).
+// Con filtri per: Stato, categoria, corso, mese/anno di scadenza, dipendente (solo referenti academy).
 router.get("/", protect, async (req, res) => {
   try {
-    const { status, category, course_id, employee_id, due_month } = req.query;
+    const { status, category, course_id, employee_id, due_month, due_year } = req.query;
 
     // Whitelist sui valori a insieme chiuso
     if (status && !VALID_STATUSES.includes(status)) {
@@ -73,7 +74,15 @@ router.get("/", protect, async (req, res) => {
       });
     }
 
-    const filters = { category, course_id, due_month };
+    // due_year filtra un anno intero: serve quando si sceglie l'anno senza il mese.
+    if (due_year && !YEAR_REGEX.test(due_year)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Anno di scadenza non valido: formato richiesto AAAA",
+      });
+    }
+
+    const filters = { category, course_id, due_month, due_year };
 
     // Lo stato 'expired' è derivato (assigned + scadenza passata), non esiste sul DB:
     // il filtro va tradotto in una condizione sulla data di scadenza.

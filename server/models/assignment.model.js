@@ -22,7 +22,8 @@ const findAllAssignments = async (filters = {}) => {
 
   // Filtri sulla scadenza. due_before/due_from servono al controller per distinguere
   // le assegnazioni ancora aperte da quelle scadute (lo stato 'expired' è derivato,
-  // non persistito); due_month restringe al mese di scadenza richiesto (AAAA-MM).
+  // non persistito); due_month restringe al mese di scadenza richiesto (AAAA-MM),
+  // due_year all'intero anno (AAAA).
   if (filters.due_before) query = query.lt("due_date", filters.due_before);
   if (filters.due_from) query = query.gte("due_date", filters.due_from);
   if (filters.due_month) {
@@ -32,6 +33,11 @@ const findAllAssignments = async (filters = {}) => {
     query = query
       .gte("due_date", `${filters.due_month}-01`)
       .lte("due_date", lastDay);
+  }
+  if (filters.due_year) {
+    query = query
+      .gte("due_date", `${filters.due_year}-01-01`)
+      .lte("due_date", `${filters.due_year}-12-31`);
   }
 
   const { data, error } = await query;

@@ -1,6 +1,7 @@
 import api from "../api/client";
 
-// Filtri supportati: status, category, course_id, employee_id (solo admin), due_month.
+// Filtri supportati: status, category, course_id, employee_id (solo admin),
+// due_month (AAAA-MM) e due_year (AAAA, per filtrare un anno intero).
 // I filtri vuoti non vanno inviati (convenzione in server/FILTERS_BE.md).
 export const fetchAssignments = async (filters = {}) => {
   try {

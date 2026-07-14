@@ -104,6 +104,7 @@ Tutte le rotte richiedono autenticazione. Le rotte di gestione (creazione, modif
   | `course_id`   | uuid         | Corso collegato. Uuid malformato → `400`.                                                               |
   | `employee_id` | uuid         | **Solo admin**: per un dipendente il filtro viene ignorato e forzato al proprio id. Uuid malformato → `400`. |
   | `due_month`   | `2026-07`    | Mese di scadenza (`due_date` dentro il mese indicato). Formato diverso da `AAAA-MM` → `400`.            |
+  | `due_year`    | `2026`       | Anno di scadenza (`due_date` dentro l'anno indicato). Formato diverso da `AAAA` → `400`. Serve a filtrare per anno senza indicare il mese; se combinato con `due_month` i due intervalli si intersecano. |
 
   Esempio: `GET /assignments?status=expired&category=Compliance&due_month=2026-07`
 

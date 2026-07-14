@@ -29,6 +29,25 @@ export const MANDATORY_LABELS = {
   false: "Facoltativo",
 };
 
+// Mesi per i filtri sulle date: la chiave è il mese a due cifre, come nel
+// formato AAAA-MM che il backend si aspetta.
+export const MONTH_LABELS = {
+  "01": "Gennaio",
+  "02": "Febbraio",
+  "03": "Marzo",
+  "04": "Aprile",
+  "05": "Maggio",
+  "06": "Giugno",
+  "07": "Luglio",
+  "08": "Agosto",
+  "09": "Settembre",
+  // Le chiavi restano stringhe (anche 10-12): una chiave numerica verrebbe
+  // enumerata per prima e sfalserebbe l'ordine dei mesi.
+  "10": "Ottobre",
+  "11": "Novembre",
+  "12": "Dicembre",
+};
+
 // Contenuti della hero pubblica (HomePage, rotta "/").
 // Il titolo è composto da titleStart + titleAccent: la parte "accent" riceve
 // la sottolineatura animata. Personalizzare per dominio, ad esempio (rimborsi):

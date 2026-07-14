@@ -25,6 +25,7 @@ import {
   ASSIGNMENT_STATUS_LABELS,
   COURSE_STATUS_LABELS,
   MANDATORY_LABELS,
+  MONTH_LABELS,
 } from "../constants/app";
 import { showSuccess, showError } from "../utils/toast";
 import { formatDate } from "../utils/formatters";
@@ -33,6 +34,20 @@ import { STATUS_BADGE_VARIANTS } from "../constants/Courses";
 // Un corso assegnato resta da fare finché l'assegnazione non è chiusa: 'expired'
 // è solo una scadenza passata, quindi il corso si può ancora completare (in ritardo).
 const isCompletable = (status) => status === "assigned" || status === "expired";
+
+const CURRENT_YEAR = new Date().getFullYear();
+
+// Opzioni dei filtri sulla scadenza: le assegnazioni scadono a ridosso di oggi,
+// quindi l'anno si sceglie in una finestra di due anni indietro e due avanti.
+const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => {
+  const year = String(CURRENT_YEAR - 2 + i);
+  return { value: year, label: year };
+});
+
+const MONTH_OPTIONS = Object.entries(MONTH_LABELS).map(([value, label]) => ({
+  value,
+  label,
+}));
 
 const StatusBadge = ({ status }) => (
   <Badge variant={STATUS_BADGE_VARIANTS[status] || "muted"}>
@@ -478,8 +493,36 @@ const buildEmployeeColumns = (onView, onComplete) => [
 
 // Vista del dipendente: i corsi assegnati a lui, con stato e scadenza.
 const EmployeeCoursesView = () => {
-  const [filters, setFilters] = useState({ status: "", category: "", due_month: "" });
+  const [filters, setFilters] = useState({
+    status: "",
+    category: "",
+    due_year: "",
+    due_month: "",
+  });
   const [viewingItem, setViewingItem] = useState(null);
+
+  // Un mese senza anno non individua un intervallo: se l'anno manca si assume
+  // quello corrente, e il select lo mostra così il filtro applicato resta leggibile.
+  const handleFilterChange = (next) =>
+    setFilters(
+      next.due_month && !next.due_year
+        ? { ...next, due_year: String(CURRENT_YEAR) }
+        : next,
+    );
+
+  // I due select vengono ricomposti nei filtri attesi dal backend: anno + mese
+  // diventano `due_month` (AAAA-MM), il solo anno diventa `due_year`.
+  const query = useMemo(() => {
+    const { status, category, due_year, due_month } = filters;
+
+    if (due_year && due_month) {
+      return { status, category, due_month: `${due_year}-${due_month}` };
+    }
+    if (due_year) {
+      return { status, category, due_year };
+    }
+    return { status, category };
+  }, [filters]);
 
   // Servono due letture: le assegnazioni portano stato e scadenza, ma il corso
   // annidato al loro interno non include la descrizione, che arriva da /courses
@@ -490,7 +533,7 @@ const EmployeeCoursesView = () => {
     isLoading,
     error,
     refetch,
-  } = useFetch(() => fetchAssignments(filters), [filters]);
+  } = useFetch(() => fetchAssignments(query), [query]);
 
   const rows = useMemo(() => {
     const descriptionByCourseId = new Map(
@@ -537,7 +580,18 @@ const EmployeeCoursesView = () => {
         type: "select",
         options: categoryOptions,
       },
-      { key: "due_month", label: "Mese di scadenza", type: "month" },
+      {
+        key: "due_year",
+        label: "Anno di scadenza",
+        type: "select",
+        options: YEAR_OPTIONS,
+      },
+      {
+        key: "due_month",
+        label: "Mese di scadenza",
+        type: "select",
+        options: MONTH_OPTIONS,
+      },
     ],
     [categoryOptions],
   );
@@ -579,7 +633,11 @@ const EmployeeCoursesView = () => {
         </p>
       </div>
 
-      <FilterBar filters={filterConfig} values={filters} onChange={setFilters} />
+      <FilterBar
+        filters={filterConfig}
+        values={filters}
+        onChange={handleFilterChange}
+      />
 
       {isLoading && <Loader />}
       {error && (
