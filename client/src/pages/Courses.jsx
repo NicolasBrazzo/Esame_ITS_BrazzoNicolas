@@ -122,6 +122,7 @@ const CourseForm = ({ initialData, onSubmit, error }) => {
             value={formState.category}
             onChange={handleChange}
             placeholder="Compliance"
+            required
           />
         </div>
         <div className="space-y-1.5">
@@ -219,10 +220,14 @@ const AdminCoursesView = () => {
   } = useMutation(
     (formData) => {
       const title = formData.title.trim();
+      const category = formData.category.trim();
       const hours = Number(formData.duration_hours);
 
       if (title.length < 2 || title.length > 200) {
         throw new Error("Il titolo deve contenere tra 2 e 200 caratteri");
+      }
+      if (category.length < 2 || category.length > 100) {
+        throw new Error("La categoria deve contenere tra 2 e 100 caratteri");
       }
       if (!Number.isInteger(hours) || hours <= 0) {
         throw new Error("La durata deve essere un numero intero positivo di ore");
@@ -231,7 +236,7 @@ const AdminCoursesView = () => {
       const payload = {
         title,
         description: formData.description.trim() || null,
-        category: formData.category.trim() || null,
+        category,
         duration_hours: hours,
         mandatory: !!formData.mandatory,
       };

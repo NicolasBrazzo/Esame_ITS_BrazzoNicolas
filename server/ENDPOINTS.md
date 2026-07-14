@@ -76,7 +76,7 @@ Tutte le rotte richiedono autenticazione **e privilegi di amministratore** (`isA
 
 - `GET /courses` — Elenco corsi. **Protetta** (qualsiasi utente autenticato): un admin vede tutti i corsi, un dipendente vede solo i corsi a lui assegnati (tramite `E_CourseAssignments`).
 - `GET /courses/:id` — Singolo corso per ID. **Protetta**: stessa regola di visibilità di sopra; `404` se il corso non esiste, `403` se un dipendente richiede un corso non assegnato a lui.
-- `POST /courses` — Crea un nuovo corso. **Solo admin.** Body: `title` (2–200 caratteri), `duration_hours` (intero positivo) e `mandatory` (booleano) obbligatori; `description` (2–1000 caratteri) e `category` (2–100 caratteri) opzionali. `active` non si passa nel body: nasce `true` e si spegne solo con `/disable`.
+- `POST /courses` — Crea un nuovo corso. **Solo admin.** Body: `title` (2–200 caratteri), `category` (2–100 caratteri), `duration_hours` (intero positivo) e `mandatory` (booleano) obbligatori; `description` (2–1000 caratteri) opzionale. `active` non si passa nel body: nasce `true` e si spegne solo con `/disable`.
   - `400` se un campo obbligatorio manca o non rispetta i limiti di lunghezza, o se `duration_hours` non è un intero positivo.
   - `409` se il titolo è già in uso.
 - `PUT /courses/:id` — Aggiorna un corso. **Solo admin.** Stesso body e stesse validazioni della creazione. `404` se il corso non esiste, `409` se il titolo è già usato da un altro corso.

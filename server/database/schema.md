@@ -82,7 +82,7 @@ Corsi del catalogo Academy che possono essere assegnati ai dipendenti.
 | `id`             | uuid        | NO   | `gen_random_uuid()` | Primary key                                    |
 | `title`          | text        | NO   | —                    | Titolo del corso                               |
 | `description`    | text        | SÌ   | —                    | Descrizione libera                             |
-| `category`       | text        | SÌ   | —                    | Categoria (usata come filtro nell'elenco)      |
+| `category`       | text        | SÌ*  | —                    | Categoria (usata come filtro nell'elenco). *Obbligatoria a livello applicativo |
 | `duration_hours` | integer     | NO   | —                    | Durata in ore, deve essere > 0                 |
 | `mandatory`      | boolean     | NO   | `false`              | Corso obbligatorio per i dipendenti            |
 | `active`         | boolean     | NO   | `true`               | Corso attivo/disabilitato (`PUT /courses/:id/disable` lo porta a `false`) |
@@ -92,7 +92,10 @@ Corsi del catalogo Academy che possono essere assegnati ai dipendenti.
 - `duration_hours > 0` (CHECK).
 
 **Validazione applicativa**
-- `title`: obbligatorio, non vuoto.
+- `title`: obbligatorio, 2–200 caratteri.
+- `category`: obbligatoria, 2–100 caratteri. Colonna nullable a livello DB (stesso
+  approccio di `first_name` / `last_name`: non rompe le righe già esistenti), ma
+  create/update la richiedono sempre.
 - `duration_hours`: intero positivo.
 - La disabilitazione (`active = false`) è **soft**: non elimina il corso, per non perdere lo storico delle assegnazioni già create (per questo `E_CourseAssignments.course_id` è `ON DELETE RESTRICT`: un corso con assegnazioni non può essere cancellato, va disabilitato).
 

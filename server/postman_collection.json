@@ -232,7 +232,7 @@
               "host": ["{{baseUrl}}"],
               "path": ["courses"]
             },
-            "description": "Solo admin. title (2-200), duration_hours (intero positivo) e mandatory (booleano) sono obbligatori; description (2-1000) e category (2-100) sono opzionali. I campi testuali ammettono cifre e punteggiatura. 409 se il titolo è già in uso."
+            "description": "Solo admin. title (2-200), category (2-100), duration_hours (intero positivo) e mandatory (booleano) sono obbligatori; description (2-1000) è opzionale. I campi testuali ammettono cifre e punteggiatura. 409 se il titolo è già in uso."
           }
         },
         {
@@ -250,7 +250,7 @@
               "path": ["courses", ":id"],
               "variable": [{ "key": "id", "value": "", "description": "uuid del corso" }]
             },
-            "description": "Solo admin. Stesso body e stesse validazioni della creazione: mandatory va rispedito sempre. 404 se il corso non esiste, 409 se il titolo è già usato da un altro corso."
+            "description": "Solo admin. Stesso body e stesse validazioni della creazione: category e mandatory vanno rispediti sempre. 404 se il corso non esiste, 409 se il titolo è già usato da un altro corso."
           }
         },
         {

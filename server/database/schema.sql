@@ -41,7 +41,7 @@ create table if not exists "E_Courses" (
     "id"             uuid        primary key default gen_random_uuid(),
     "title"          text        not null,
     "description"    text,
-    "category"       text,
+    "category"       text,                         -- obbligatoria a livello applicativo (2-100 caratteri)
     "duration_hours" integer     not null check ("duration_hours" > 0),
     "mandatory"      boolean     not null default false,
     "active"         boolean     not null default true,

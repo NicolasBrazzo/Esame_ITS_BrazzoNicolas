@@ -17,18 +17,10 @@ const {
   findAssignmentsByCourseId,
   findAssignedCourseIdsByEmployeeId,
 } = require("../models/assignment.model");
+const { isValidText } = require("../utils/isValidText");
+const { isValidDuration } = require("../utils/isValidDuration");
 
 const router = express.Router();
-
-// I campi testuali di un corso non sono nomi di persona: titoli e descrizioni
-// contengono cifre e punteggiatura ("Excel 2024", "Sicurezza D.Lgs 81/08"),
-// quindi si validano sulla lunghezza e non con validateName.
-const isValidText = (value, min, max) =>
-  typeof value === "string" && value.trim().length >= min && value.trim().length <= max;
-
-// duration_hours arriva dal form come stringa: va accettato solo un intero positivo
-const isValidDuration = (value) =>
-  Number.isInteger(Number(value)) && Number(value) > 0;
 
 // Get All courses — admin: tutti i corsi. Dipendente: solo i corsi a lui assegnati.
 router.get("/", protect, async (req, res) => {
@@ -76,10 +68,10 @@ router.post("/", protect, isAdmin, async (req, res) => {
     const { title, description, category, duration_hours, mandatory } = req.body;
 
     // Validazione base dei campi
-    if (!title || !duration_hours || typeof mandatory !== "boolean") {
+    if (!title || !category || !duration_hours || typeof mandatory !== "boolean") {
       return res.status(400).json({
         ok: false,
-        error: "Campi obbligatori mancanti: title, duration_hours, mandatory",
+        error: "Campi obbligatori mancanti: titolo, categoria, durata, obbligatorietà",
       });
     }
 
@@ -99,8 +91,8 @@ router.post("/", protect, isAdmin, async (req, res) => {
       });
     }
 
-    // Validazione categoria (facoltativa)
-    if (category && !isValidText(category, 2, 100)) {
+    // Validazione categoria
+    if (!isValidText(category, 2, 100)) {
       return res.status(400).json({
         ok: false,
         error: "La categoria deve contenere tra 2 e 100 caratteri",
@@ -144,10 +136,10 @@ router.put("/:id", protect, isAdmin, async (req, res) => {
     const { title, description, category, duration_hours, mandatory } = req.body;
 
     // Validazione base dei campi
-    if (!title || !duration_hours || typeof mandatory !== "boolean") {
+    if (!title || !category || !duration_hours || typeof mandatory !== "boolean") {
       return res.status(400).json({
         ok: false,
-        error: "Campi obbligatori mancanti: title, duration_hours, mandatory",
+        error: "Campi obbligatori mancanti: titolo, categoria, durata, obbligatorietà",
       });
     }
 
@@ -167,8 +159,8 @@ router.put("/:id", protect, isAdmin, async (req, res) => {
       });
     }
 
-    // Validazione categoria (facoltativa)
-    if (category && !isValidText(category, 2, 100)) {
+    // Validazione categoria
+    if (!isValidText(category, 2, 100)) {
       return res.status(400).json({
         ok: false,
         error: "La categoria deve contenere tra 2 e 100 caratteri",

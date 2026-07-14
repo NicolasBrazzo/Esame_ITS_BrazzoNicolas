@@ -516,10 +516,6 @@ const AssignmentsView = () => {
   );
 };
 
-// La rotta è protetta ma non esiste una guardia admin: la pagina si difende da sola.
-// Il controllo sta qui, prima di montare la vista, così a un dipendente non parte
-// nemmeno la GET /users (che il backend rifiuterebbe con 403).
-// La difesa vera resta comunque il middleware isAdmin lato server.
 export const Assignments = () => {
   const { user } = useAuth();
 
