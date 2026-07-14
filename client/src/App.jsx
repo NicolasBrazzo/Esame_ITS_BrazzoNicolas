@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Users } from "./pages/Users.jsx";
 import { Courses } from "./pages/Courses.jsx";
 import { Assignments } from "./pages/Assignments.jsx";
+import { Stats } from "./pages/Stats.jsx";
 import { NotFound } from "./pages/NotFound.jsx";
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ function App() {
                   <Route path="/users" element={<Users />} />
                   <Route path="/courses" element={<Courses />} />
                   <Route path="/assignments" element={<Assignments />} />
+                  <Route path="/stats" element={<Stats />} />
                 </Route>
               </Route>
               <Route path="*" element={<NotFound />} />

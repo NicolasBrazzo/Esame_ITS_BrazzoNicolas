@@ -406,6 +406,30 @@
       ]
     },
     {
+      "name": "Stats",
+      "description": "Solo admin. Riepilogo delle assegnazioni per mese di assegnazione e categoria, con percentuale di completamento.",
+      "item": [
+        {
+          "name": "Riepilogo statistiche",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/stats?category=Compliance&year=2026&month=2026-07",
+              "host": ["{{baseUrl}}"],
+              "path": ["stats"],
+              "query": [
+                { "key": "category", "value": "Compliance", "disabled": true, "description": "Categoria del corso collegato" },
+                { "key": "year", "value": "2026", "disabled": true, "description": "Anno di assegnazione, formato AAAA" },
+                { "key": "month", "value": "2026-07", "disabled": true, "description": "Mese di assegnazione, formato AAAA-MM — si interseca con year se entrambi presenti" }
+              ]
+            },
+            "description": "Filtri tutti opzionali. Anno non in formato AAAA o mese non in formato AAAA-MM: 400. Il raggruppamento è sul mese di assegnazione (assigned_at), non sulla scadenza."
+          }
+        }
+      ]
+    },
+    {
       "name": "Utility",
       "item": [
         {

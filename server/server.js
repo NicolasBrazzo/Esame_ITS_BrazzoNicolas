@@ -7,6 +7,7 @@ const authRoutes = require("./controllers/auth.controller");
 const usersRoutes = require("./controllers/users.controller");
 const coursesRoutes = require("./controllers/courses.controller");
 const assignmentsRoutes = require("./controllers/assignment.controller");
+const statsRoutes = require("./controllers/stats.controller");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,7 @@ app.use("/auth", authRoutes);
 app.use("/users", usersRoutes);
 app.use("/courses", coursesRoutes);
 app.use("/assignments", assignmentsRoutes);
+app.use("/stats", statsRoutes);
 
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "ok" });

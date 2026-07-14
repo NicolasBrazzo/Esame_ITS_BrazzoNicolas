@@ -25,6 +25,16 @@ export const COURSES_COLUMN_LABELS = {
   created_at: "Creato il",
 };
 
+export const STATS_COLUMN_LABELS = {
+  month: "Mese",
+  category: "Categoria",
+  assigned: "Assegnati",
+  completed: "Completati",
+  expired: "Scaduti",
+  cancelled: "Annullati",
+  completionRate: "% Completamento",
+};
+
 export const ASSIGNMENTS_COLUMN_LABELS = {
   employee_name: "Dipendente",
   employee_email: "Email",

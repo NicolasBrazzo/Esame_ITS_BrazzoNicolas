@@ -6,6 +6,7 @@ import {
   UserPlus,
   BookOpen,
   ClipboardList,
+  BarChart3,
   LogOut,
 } from "lucide-react";
 import { APP_NAME, APP_LOGO } from "../constants/app";
@@ -17,11 +18,12 @@ const MENU_ITEMS = [
   { icon: UserPlus, label: "Utenti", path: "/users" },
   { icon: BookOpen, label: "Corsi", path: "/courses" },
   { icon: ClipboardList, label: "Assegnazioni", path: "/assignments" },
+  { icon: BarChart3, label: "Statistiche", path: "/stats" },
 ];
 
 // Pagine riservate al referente academy. "/courses" è di tutti: un dipendente ci
 // trova i corsi assegnati a lui.
-const ADMIN_ONLY_PATHS = ["/users", "/assignments"];
+const ADMIN_ONLY_PATHS = ["/users", "/assignments", "/stats"];
 
 export const Sidebar = () => {
   const [isOpen, setIsOpen] = useState(false);

@@ -61,7 +61,6 @@ router.get("/", protect, async (req, res) => {
       });
     }
 
-    // due_year filtra un anno intero: serve quando si sceglie l'anno senza il mese.
     if (due_year && !YEAR_REGEX.test(due_year)) {
       return res.status(400).json({
         ok: false,
@@ -71,7 +70,6 @@ router.get("/", protect, async (req, res) => {
 
     const filters = { category, course_id, due_month, due_year };
 
-    // Lo stato 'expired' è derivato (assigned + scadenza passata), non esiste sul DB:
     // il filtro va tradotto in una condizione sulla data di scadenza.
     if (status === "expired") {
       filters.status = "assigned";
@@ -83,9 +81,7 @@ router.get("/", protect, async (req, res) => {
       filters.status = status;
     }
 
-    // Visibilità: solo il referente academy (admin) può filtrare per dipendente.
-    // Il dipendente vede sempre e solo le proprie assegnazioni: employee_id è
-    // forzato al suo id, un eventuale filtro nella query string viene ignorato.
+    // Filtro dipendenti solo per Admin
     filters.employee_id = req.user.isAdmin ? employee_id : req.user.sub;
 
     const assignments = await findAllAssignments(filters);
@@ -99,7 +95,7 @@ router.get("/", protect, async (req, res) => {
   }
 });
 
-// Get single assignment by id — admin: qualsiasi assegnazione. Dipendente: solo le proprie.
+// Get single assignment by id
 router.get("/:id", protect, async (req, res) => {
   try {
     const { id } = req.params;
@@ -120,7 +116,6 @@ router.get("/:id", protect, async (req, res) => {
 });
 
 // Create Assignment — lo stato iniziale è sempre 'assigned' (default del DB):
-// i cambi di stato passano da /complete e /cancel.
 router.post("/", protect, isAdmin, async (req, res) => {
   try {
     const { course_id, employee_id, due_date } = req.body;

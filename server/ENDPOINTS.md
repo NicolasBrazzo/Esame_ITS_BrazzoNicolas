@@ -119,11 +119,41 @@ Tutte le rotte richiedono autenticazione. Le rotte di gestione (creazione, modif
 
 ---
 
-## Stats - `/stats`
+## Stats — `/stats`
 
 Tutte le rotte richiedono autenticazione **e privilegi di amministratore** (`isAdmin: true`).
 
-- `GET /stats` - Con tutti i filtri.
+- `GET /stats` — Riepilogo delle assegnazioni raggruppato per **mese di assegnazione** (`assigned_at`) e **categoria** del corso, con conteggi per stato e percentuale di completamento. Il mese è quello in cui il corso è stato assegnato, non la scadenza: la percentuale risponde a "dei corsi assegnati in quel mese/categoria, quanti sono stati completati finora".
+
+  Filtri opzionali in query string (convenzioni in [`FILTERS_BE.md`](./FILTERS_BE.md)):
+
+  | Parametro  | Esempio      | Note                                                              |
+  | ---------- | ------------ | ------------------------------------------------------------------ |
+  | `category` | `Compliance` | Categoria del corso collegato (`E_Courses.category`).               |
+  | `year`     | `2026`       | Anno di assegnazione (`assigned_at` dentro l'anno indicato). Formato diverso da `AAAA` → `400`. |
+  | `month`    | `2026-07`    | Mese di assegnazione (`assigned_at` dentro il mese indicato). Formato diverso da `AAAA-MM` → `400`. Se combinato con `year` i due filtri si intersecano. |
+
+  Risposta:
+
+  ```json
+  {
+    "ok": true,
+    "stats": [
+      {
+        "month": "2026-07",
+        "category": "Compliance",
+        "assigned": 5,
+        "completed": 3,
+        "expired": 1,
+        "cancelled": 0,
+        "completionRate": 60
+      }
+    ],
+    "totals": { "assigned": 5, "completed": 3, "completionRate": 60 }
+  }
+  ```
+
+  `stats` è ordinato per mese crescente e, a parità di mese, per categoria. `totals` aggrega gli stessi filtri su tutte le righe (non solo quelle mostrate a video). Nessuna riga soddisfa i filtri → `200` con `stats: []` e `totals` a zero.
 
 ## Utility
 
