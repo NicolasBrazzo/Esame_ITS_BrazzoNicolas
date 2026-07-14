@@ -20,6 +20,20 @@ const findAllAssignments = async (filters = {}) => {
   if (filters.employee_id) query = query.eq("employee_id", filters.employee_id);
   if (filters.category) query = query.eq("course.category", filters.category);
 
+  // Filtri sulla scadenza. due_before/due_from servono al controller per distinguere
+  // le assegnazioni ancora aperte da quelle scadute (lo stato 'expired' è derivato,
+  // non persistito); due_month restringe al mese di scadenza richiesto (AAAA-MM).
+  if (filters.due_before) query = query.lt("due_date", filters.due_before);
+  if (filters.due_from) query = query.gte("due_date", filters.due_from);
+  if (filters.due_month) {
+    const [year, month] = filters.due_month.split("-").map(Number);
+    // giorno 0 del mese successivo = ultimo giorno del mese richiesto
+    const lastDay = new Date(Date.UTC(year, month, 0)).toISOString().slice(0, 10);
+    query = query
+      .gte("due_date", `${filters.due_month}-01`)
+      .lte("due_date", lastDay);
+  }
+
   const { data, error } = await query;
   if (error) {
     throw new Error("DATABASE_FIND_ALL_ASSIGNMENTS_ERROR");

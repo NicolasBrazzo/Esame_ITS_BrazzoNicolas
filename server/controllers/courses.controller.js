@@ -1,10 +1,8 @@
 const express = require("express");
-const bcrypt = require("bcrypt");
 
 const protect = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
 
-const { validateName } = require("../utils/validateName");
 const {
   findAllCourses,
   findCoursesByIds,
@@ -21,6 +19,16 @@ const {
 } = require("../models/assignment.model");
 
 const router = express.Router();
+
+// I campi testuali di un corso non sono nomi di persona: titoli e descrizioni
+// contengono cifre e punteggiatura ("Excel 2024", "Sicurezza D.Lgs 81/08"),
+// quindi si validano sulla lunghezza e non con validateName.
+const isValidText = (value, min, max) =>
+  typeof value === "string" && value.trim().length >= min && value.trim().length <= max;
+
+// duration_hours arriva dal form come stringa: va accettato solo un intero positivo
+const isValidDuration = (value) =>
+  Number.isInteger(Number(value)) && Number(value) > 0;
 
 // Get All courses — admin: tutti i corsi. Dipendente: solo i corsi a lui assegnati.
 router.get("/", protect, async (req, res) => {
@@ -76,34 +84,34 @@ router.post("/", protect, isAdmin, async (req, res) => {
     }
 
     // Validazione titolo
-    if (!validateName(title)) {
+    if (!isValidText(title, 2, 200)) {
       return res.status(400).json({
         ok: false,
-        error: "Il titolo è obbligatorio (minimo 2 caratteri, solo lettere, spazi, apostrofi e trattini)",
+        error: "Il titolo deve contenere tra 2 e 200 caratteri",
       });
     }
 
-    // Validazione descrizione
-    if (description && !validateName(description)) {
+    // Validazione descrizione (facoltativa)
+    if (description && !isValidText(description, 2, 1000)) {
       return res.status(400).json({
         ok: false,
-        error: "La descrizione è obbligatoria (minimo 2 caratteri, solo lettere, spazi, apostrofi e trattini)",
+        error: "La descrizione deve contenere tra 2 e 1000 caratteri",
       });
     }
 
-    // Validazione categoria
-    if (category && !validateName(category)) {
+    // Validazione categoria (facoltativa)
+    if (category && !isValidText(category, 2, 100)) {
       return res.status(400).json({
         ok: false,
-        error: "La categoria è obbligatoria (minimo 2 caratteri, solo lettere, spazi, apostrofi e trattini)",
+        error: "La categoria deve contenere tra 2 e 100 caratteri",
       });
     }
 
     // Validazione durata
-    if (duration_hours <= 0) {
+    if (!isValidDuration(duration_hours)) {
       return res.status(400).json({
         ok: false,
-        error: "La durata deve essere un numero positivo",
+        error: "La durata deve essere un numero intero positivo di ore",
       });
     }
 
@@ -119,7 +127,7 @@ router.post("/", protect, isAdmin, async (req, res) => {
       title,
       description,
       category,
-      duration_hours,
+      Number(duration_hours),
       mandatory
     );
     return res.status(201).json({ ok: true, course });
@@ -144,34 +152,34 @@ router.put("/:id", protect, isAdmin, async (req, res) => {
     }
 
     // Validazione titolo
-    if (!validateName(title)) {
+    if (!isValidText(title, 2, 200)) {
       return res.status(400).json({
         ok: false,
-        error: "Il titolo è obbligatorio (minimo 2 caratteri, solo lettere, spazi, apostrofi e trattini)",
+        error: "Il titolo deve contenere tra 2 e 200 caratteri",
       });
     }
 
-    // Validazione descrizione
-    if (description && !validateName(description)) {
+    // Validazione descrizione (facoltativa)
+    if (description && !isValidText(description, 2, 1000)) {
       return res.status(400).json({
         ok: false,
-        error: "La descrizione è obbligatoria (minimo 2 caratteri, solo lettere, spazi, apostrofi e trattini)",
+        error: "La descrizione deve contenere tra 2 e 1000 caratteri",
       });
     }
 
-    // Validazione categoria
-    if (category && !validateName(category)) {
+    // Validazione categoria (facoltativa)
+    if (category && !isValidText(category, 2, 100)) {
       return res.status(400).json({
         ok: false,
-        error: "La categoria è obbligatoria (minimo 2 caratteri, solo lettere, spazi, apostrofi e trattini)",
+        error: "La categoria deve contenere tra 2 e 100 caratteri",
       });
     }
 
     // Validazione durata
-    if (duration_hours <= 0) {
+    if (!isValidDuration(duration_hours)) {
       return res.status(400).json({
         ok: false,
-        error: "La durata deve essere un numero positivo",
+        error: "La durata deve essere un numero intero positivo di ore",
       });
     }
 
@@ -187,10 +195,10 @@ router.put("/:id", protect, isAdmin, async (req, res) => {
       title,
       description,
       category,
-      duration_hours,
+      duration_hours: Number(duration_hours),
       mandatory
     };
-    
+
     const course = await updateCourseById(id, updateData);
     if (!course) {
       return res.status(404).json({ ok: false, error: "Corso non trovato" });

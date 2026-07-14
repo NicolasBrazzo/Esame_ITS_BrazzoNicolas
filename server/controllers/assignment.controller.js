@@ -21,6 +21,7 @@ const VALID_STATUSES = ["assigned", "completed", "expired", "cancelled"];
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const MONTH_REGEX = /^\d{4}-\d{2}$/;
 
 // Le date del dominio sono `date` (non timestamp): il formato ISO YYYY-MM-DD si
 // confronta lessicograficamente, quindi le regole assigned_at/due_date/completed_at
@@ -31,13 +32,23 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 // Un'assegnazione è modificabile/completabile/annullabile solo finché è aperta:
 // da uno stato finale (completed, expired, cancelled) non si torna indietro.
+// Nota: un'assegnazione scaduta resta aperta sul DB (status = 'assigned'), quindi
+// un corso in ritardo si può ancora completare o annullare.
 const isOpen = (assignment) => assignment.status === "assigned";
 
+// 'expired' non viene mai scritto sul DB: un'assegnazione ancora aperta la cui
+// scadenza è passata viene presentata come scaduta solo in lettura.
+const isExpired = (assignment) =>
+  assignment.status === "assigned" && assignment.due_date < today();
+
+const withDerivedStatus = (assignment) =>
+  isExpired(assignment) ? { ...assignment, status: "expired" } : assignment;
+
 // Get All Assignments — admin: tutti gli assignment. Dipendente: solo i propri assignment.
-// Con filtri per: Stato, categoria, corso, dipendente (solo referenti academy).
+// Con filtri per: Stato, categoria, corso, mese di scadenza, dipendente (solo referenti academy).
 router.get("/", protect, async (req, res) => {
   try {
-    const { status, category, course_id, employee_id } = req.query;
+    const { status, category, course_id, employee_id, due_month } = req.query;
 
     // Whitelist sui valori a insieme chiuso
     if (status && !VALID_STATUSES.includes(status)) {
@@ -49,13 +60,32 @@ router.get("/", protect, async (req, res) => {
 
     if (course_id && !UUID_REGEX.test(course_id)) {
       return res.status(400).json({ ok: false, error: "Corso non valido" });
-    } 
+    }
 
     if (employee_id && !UUID_REGEX.test(employee_id)) {
       return res.status(400).json({ ok: false, error: "Dipendente non valido" });
     }
 
-    const filters = { status, category, course_id };
+    if (due_month && !MONTH_REGEX.test(due_month)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Mese di scadenza non valido: formato richiesto AAAA-MM",
+      });
+    }
+
+    const filters = { category, course_id, due_month };
+
+    // Lo stato 'expired' è derivato (assigned + scadenza passata), non esiste sul DB:
+    // il filtro va tradotto in una condizione sulla data di scadenza.
+    if (status === "expired") {
+      filters.status = "assigned";
+      filters.due_before = today();
+    } else if (status === "assigned") {
+      filters.status = "assigned";
+      filters.due_from = today();
+    } else {
+      filters.status = status;
+    }
 
     // Visibilità: solo il referente academy (admin) può filtrare per dipendente.
     // Il dipendente vede sempre e solo le proprie assegnazioni: employee_id è
@@ -63,7 +93,10 @@ router.get("/", protect, async (req, res) => {
     filters.employee_id = req.user.isAdmin ? employee_id : req.user.sub;
 
     const assignments = await findAllAssignments(filters);
-    return res.status(200).json({ ok: true, assignments });
+    return res.status(200).json({
+      ok: true,
+      assignments: assignments.map(withDerivedStatus),
+    });
   } catch (err) {
     console.error("GET ALL ASSIGNMENTS ERROR:", err);
     return res.status(500).json({ ok: false, error: "Errore interno del server" });
@@ -83,7 +116,7 @@ router.get("/:id", protect, async (req, res) => {
       return res.status(403).json({ ok: false, error: "Accesso non autorizzato" });
     }
 
-    return res.status(200).json({ ok: true, assignment });
+    return res.status(200).json({ ok: true, assignment: withDerivedStatus(assignment) });
   } catch (err) {
     console.error("GET SINGLE ASSIGNMENT BY ID ERROR:", err);
     return res.status(500).json({ ok: false, error: "Errore interno del server" });

@@ -2,11 +2,31 @@
 // nato dal template. Usato da Sidebar, Login, Register.
 // Ricordarsi anche del <title> in index.html.
 export const APP_NAME = "Academy Aziendale";
-export const APP_LOGO = "|_|";
+export const APP_LOGO = "🏫";
 
 export const ROLE_LABELS = {
   admin: "Referente Academy",
   user: "Dipendente",
+};
+
+// Stati di un'assegnazione. `expired` non è mai scritto sul DB: il backend lo
+// deriva in lettura da un'assegnazione ancora aperta con la scadenza passata.
+export const ASSIGNMENT_STATUS_LABELS = {
+  assigned: "Assegnato",
+  completed: "Completato",
+  expired: "Scaduto",
+  cancelled: "Annullato",
+};
+
+// Stato di un corso (E_Courses.active): la disattivazione è un soft delete.
+export const COURSE_STATUS_LABELS = {
+  active: "Attivo",
+  inactive: "Disattivato",
+};
+
+export const MANDATORY_LABELS = {
+  true: "Obbligatorio",
+  false: "Facoltativo",
 };
 
 // Contenuti della hero pubblica (HomePage, rotta "/").
@@ -16,9 +36,9 @@ export const ROLE_LABELS = {
 // La pagina usa i token shadcn condivisi; i font display/dati sono
 // --font-display e --font-data in index.css.
 export const HOME = {
-  eyebrow: "Gestione operativa",
-  titleStart: "Ogni cosa",
-  titleAccent: "al suo posto.",
+  // eyebrow: "Gestione operativa",
+  titleStart: "La formazione",
+  titleAccent: "di una vera Accademy",
   subtitle:
     "Utenti, ruoli e attività di ogni giorno in un unico registro ordinato. Accedi con il tuo account, o creane uno per iniziare a lavorare.",
   ctaPrimary: "Accedi",

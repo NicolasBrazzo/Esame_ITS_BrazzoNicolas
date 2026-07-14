@@ -225,14 +225,14 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"title\": \"Sicurezza sul lavoro\",\n    \"description\": \"Corso base sulla sicurezza in azienda\",\n    \"category\": \"Compliance\",\n    \"duration_hours\": 4,\n    \"mandatory\": true\n}"
+              "raw": "{\n    \"title\": \"Sicurezza sul lavoro D.Lgs 81/08\",\n    \"description\": \"Corso base sulla sicurezza in azienda, aggiornamento 2026.\",\n    \"category\": \"Compliance\",\n    \"duration_hours\": 4,\n    \"mandatory\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/courses",
               "host": ["{{baseUrl}}"],
               "path": ["courses"]
             },
-            "description": "Solo admin."
+            "description": "Solo admin. title (2-200), duration_hours (intero positivo) e mandatory (booleano) sono obbligatori; description (2-1000) e category (2-100) sono opzionali. I campi testuali ammettono cifre e punteggiatura. 409 se il titolo è già in uso."
           }
         },
         {
@@ -242,7 +242,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"title\": \"Sicurezza sul lavoro\",\n    \"description\": \"Corso base sulla sicurezza in azienda\",\n    \"category\": \"Compliance\",\n    \"duration_hours\": 6,\n    \"mandatory\": true\n}"
+              "raw": "{\n    \"title\": \"Sicurezza sul lavoro D.Lgs 81/08\",\n    \"description\": \"Corso base sulla sicurezza in azienda, aggiornamento 2026.\",\n    \"category\": \"Compliance\",\n    \"duration_hours\": 6,\n    \"mandatory\": true\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/courses/:id",
@@ -250,7 +250,7 @@
               "path": ["courses", ":id"],
               "variable": [{ "key": "id", "value": "", "description": "uuid del corso" }]
             },
-            "description": "Solo admin."
+            "description": "Solo admin. Stesso body e stesse validazioni della creazione: mandatory va rispedito sempre. 404 se il corso non esiste, 409 se il titolo è già usato da un altro corso."
           }
         },
         {
@@ -293,17 +293,18 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/assignments?status=assigned&category=Compliance&course_id=&employee_id=",
+              "raw": "{{baseUrl}}/assignments?status=assigned&category=Compliance&course_id=&employee_id=&due_month=2026-07",
               "host": ["{{baseUrl}}"],
               "path": ["assignments"],
               "query": [
-                { "key": "status", "value": "assigned", "disabled": true, "description": "assigned | completed | expired | cancelled" },
+                { "key": "status", "value": "assigned", "disabled": true, "description": "assigned | completed | expired | cancelled — 'assigned' esclude le scadute, 'expired' restituisce solo quelle" },
                 { "key": "category", "value": "Compliance", "disabled": true, "description": "Categoria del corso collegato" },
                 { "key": "course_id", "value": "", "disabled": true, "description": "uuid del corso" },
-                { "key": "employee_id", "value": "", "disabled": true, "description": "uuid del dipendente — solo admin, ignorato per i dipendenti" }
+                { "key": "employee_id", "value": "", "disabled": true, "description": "uuid del dipendente — solo admin, ignorato per i dipendenti" },
+                { "key": "due_month", "value": "2026-07", "disabled": true, "description": "Mese di scadenza, formato AAAA-MM" }
               ]
             },
-            "description": "Filtri tutti opzionali. Stato fuori whitelist o uuid malformato: 400."
+            "description": "Filtri tutti opzionali. Stato fuori whitelist, uuid malformato o mese non in formato AAAA-MM: 400. Lo stato 'expired' è derivato in lettura (assigned + scadenza passata), non è mai scritto sul DB."
           }
         },
         {

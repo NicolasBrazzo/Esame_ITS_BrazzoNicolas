@@ -76,8 +76,10 @@ Tutte le rotte richiedono autenticazione **e privilegi di amministratore** (`isA
 
 - `GET /courses` — Elenco corsi. **Protetta** (qualsiasi utente autenticato): un admin vede tutti i corsi, un dipendente vede solo i corsi a lui assegnati (tramite `E_CourseAssignments`).
 - `GET /courses/:id` — Singolo corso per ID. **Protetta**: stessa regola di visibilità di sopra; `404` se il corso non esiste, `403` se un dipendente richiede un corso non assegnato a lui.
-- `POST /courses` — Crea un nuovo corso. **Solo admin.**
-- `PUT /courses/:id` — Aggiorna un corso. **Solo admin.** `404` se il corso non esiste.
+- `POST /courses` — Crea un nuovo corso. **Solo admin.** Body: `title` (2–200 caratteri), `duration_hours` (intero positivo) e `mandatory` (booleano) obbligatori; `description` (2–1000 caratteri) e `category` (2–100 caratteri) opzionali. `active` non si passa nel body: nasce `true` e si spegne solo con `/disable`.
+  - `400` se un campo obbligatorio manca o non rispetta i limiti di lunghezza, o se `duration_hours` non è un intero positivo.
+  - `409` se il titolo è già in uso.
+- `PUT /courses/:id` — Aggiorna un corso. **Solo admin.** Stesso body e stesse validazioni della creazione. `404` se il corso non esiste, `409` se il titolo è già usato da un altro corso.
 - `DELETE /courses/:id` — Elimina un corso. **Solo admin.** `404` se il corso non esiste, `409` se il corso ha assegnazioni collegate (usare `/disable` in quel caso).
 - `PUT /courses/:id/disable` — Disabilitazione di un corso (soft delete, `active = false`). **Solo admin.** `404` se il corso non esiste, `400` se già disabilitato.
 
@@ -87,7 +89,9 @@ Tutte le rotte richiedono autenticazione **e privilegi di amministratore** (`isA
 
 Tutte le rotte richiedono autenticazione. Le rotte di gestione (creazione, modifica, eliminazione, annullamento) richiedono anche privilegi di amministratore (`isAdmin: true`). Lettura e completamento sono accessibili anche ai dipendenti, ma **solo sulle proprie assegnazioni**.
 
-**Ciclo di vita** — un'assegnazione nasce `assigned`; da lì passa a `completed` (via `/complete`) o `cancelled` (via `/cancel`). `expired` è lo stato delle assegnazioni scadute. Gli stati `completed`, `expired` e `cancelled` sono **finali**: un'assegnazione chiusa non si modifica e non cambia più stato (`409`).
+**Ciclo di vita** — un'assegnazione nasce `assigned`; da lì passa a `completed` (via `/complete`) o `cancelled` (via `/cancel`). `completed` e `cancelled` sono stati **finali**: un'assegnazione chiusa non si modifica e non cambia più stato (`409`).
+
+**`expired` è uno stato derivato, non persistito.** Sul DB una scadenza passata resta `assigned`: è la lettura (`GET /assignments` e `GET /assignments/:id`) che restituisce `status: "expired"` quando l'assegnazione è ancora `assigned` e `due_date` è precedente a oggi. Di conseguenza un corso scaduto **resta completabile e annullabile** (si può finire un corso in ritardo), e i filtri `status=assigned` / `status=expired` sono complementari: il primo restituisce solo le assegnazioni aperte e non ancora scadute.
 
 - `GET /assignments` — Elenco assegnazioni. **Protetta** (qualsiasi utente autenticato): un admin vede tutte le assegnazioni, un dipendente vede solo le proprie. Ogni riga include il corso (`course`) e il dipendente (`employee`) collegati.
 
@@ -95,12 +99,13 @@ Tutte le rotte richiedono autenticazione. Le rotte di gestione (creazione, modif
 
   | Parametro     | Esempio      | Note                                                                                                   |
   | ------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
-  | `status`      | `assigned`   | Whitelist: `assigned`, `completed`, `expired`, `cancelled`. Valore fuori whitelist → `400`.             |
+  | `status`      | `assigned`   | Whitelist: `assigned`, `completed`, `expired`, `cancelled`. Valore fuori whitelist → `400`. `assigned` esclude le scadute, `expired` restituisce solo quelle. |
   | `category`    | `Compliance` | Categoria del corso collegato (`E_Courses.category`).                                                   |
   | `course_id`   | uuid         | Corso collegato. Uuid malformato → `400`.                                                               |
   | `employee_id` | uuid         | **Solo admin**: per un dipendente il filtro viene ignorato e forzato al proprio id. Uuid malformato → `400`. |
+  | `due_month`   | `2026-07`    | Mese di scadenza (`due_date` dentro il mese indicato). Formato diverso da `AAAA-MM` → `400`.            |
 
-  Esempio: `GET /assignments?status=assigned&category=Compliance`
+  Esempio: `GET /assignments?status=expired&category=Compliance&due_month=2026-07`
 
 - `GET /assignments/:id` — Singola assegnazione per ID. **Protetta**: stessa regola di visibilità dell'elenco; `404` se non esiste, `403` se un dipendente richiede un'assegnazione non sua.
 - `POST /assignments` — Crea una nuova assegnazione. **Solo admin.** Body: `course_id`, `employee_id`, `due_date` obbligatori; `assigned_at` opzionale (default: oggi). Lo stato iniziale è sempre `assigned`: non si passa nel body.

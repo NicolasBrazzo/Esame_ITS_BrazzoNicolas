@@ -10,6 +10,8 @@ import { AppLayout } from "./layouts/AppLayout.jsx";
 import { ToastContainer } from "react-toastify";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Users } from "./pages/Users.jsx";
+import { Courses } from "./pages/Courses.jsx";
+import { Assignments } from "./pages/Assignments.jsx";
 import { NotFound } from "./pages/NotFound.jsx";
 
 const queryClient = new QueryClient();
@@ -34,6 +36,8 @@ function App() {
                 <Route element={<AppLayout />}>
                   <Route path="/dashboard" element={<Dashboard />} />
                   <Route path="/users" element={<Users />} />
+                  <Route path="/courses" element={<Courses />} />
+                  <Route path="/assignments" element={<Assignments />} />
                 </Route>
               </Route>
               <Route path="*" element={<NotFound />} />
