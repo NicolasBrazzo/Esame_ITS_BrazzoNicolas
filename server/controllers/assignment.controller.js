@@ -1,198 +1,379 @@
 const express = require("express");
-const bcrypt = require("bcrypt");
-const {
-  findAllUsers,
-  findUserById,
-  findUserByEmail,
-  createNewUser,
-  updateUserById,
-  deleteUserById,
-} = require("../models/user.model");
+
 const protect = require("../middleware/auth");
 const isAdmin = require("../middleware/isAdmin");
-const { validateEmail } = require("../utils/validateEmail");
-const { validatePassword } = require("../utils/validatePassword");
-const { validateName } = require("../utils/validateName");
+
+const {
+  findAllAssignments,
+  findAssignmentById,
+  findOpenAssignmentByCourseAndEmployee,
+  createNewAssignment,
+  updateAssignmentById,
+  deleteAssignmentById,
+} = require("../models/assignment.model");
+const { findCourseById } = require("../models/courses.model");
+const { findUserById } = require("../models/user.model");
 
 const router = express.Router();
 
-// Get All Users
-router.get("/", protect, isAdmin, async (req, res) => {
+// Stati ammessi per un'assegnazione (CHECK in E_CourseAssignments.status)
+const VALID_STATUSES = ["assigned", "completed", "expired", "cancelled"];
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
+// Le date del dominio sono `date` (non timestamp): il formato ISO YYYY-MM-DD si
+// confronta lessicograficamente, quindi le regole assigned_at/due_date/completed_at
+// si verificano con un normale <=.
+const isValidDate = (value) => DATE_REGEX.test(value) && !Number.isNaN(Date.parse(value));
+
+const today = () => new Date().toISOString().slice(0, 10);
+
+// Un'assegnazione è modificabile/completabile/annullabile solo finché è aperta:
+// da uno stato finale (completed, expired, cancelled) non si torna indietro.
+const isOpen = (assignment) => assignment.status === "assigned";
+
+// Get All Assignments — admin: tutti gli assignment. Dipendente: solo i propri assignment.
+// Con filtri per: Stato, categoria, corso, dipendente (solo referenti academy).
+router.get("/", protect, async (req, res) => {
   try {
-    const users = await findAllUsers();
-    return res.status(200).json({ ok: true, users });
+    const { status, category, course_id, employee_id } = req.query;
+
+    // Whitelist sui valori a insieme chiuso
+    if (status && !VALID_STATUSES.includes(status)) {
+      return res.status(400).json({
+        ok: false,
+        error: `Stato non valido: ammessi ${VALID_STATUSES.join(", ")}`,
+      });
+    }
+
+    if (course_id && !UUID_REGEX.test(course_id)) {
+      return res.status(400).json({ ok: false, error: "Corso non valido" });
+    } 
+
+    if (employee_id && !UUID_REGEX.test(employee_id)) {
+      return res.status(400).json({ ok: false, error: "Dipendente non valido" });
+    }
+
+    const filters = { status, category, course_id };
+
+    // Visibilità: solo il referente academy (admin) può filtrare per dipendente.
+    // Il dipendente vede sempre e solo le proprie assegnazioni: employee_id è
+    // forzato al suo id, un eventuale filtro nella query string viene ignorato.
+    filters.employee_id = req.user.isAdmin ? employee_id : req.user.sub;
+
+    const assignments = await findAllAssignments(filters);
+    return res.status(200).json({ ok: true, assignments });
   } catch (err) {
-    console.error("GET ALL USERS ERROR:", err);
+    console.error("GET ALL ASSIGNMENTS ERROR:", err);
     return res.status(500).json({ ok: false, error: "Errore interno del server" });
   }
 });
 
-// Get single user by id
-router.get("/:id", protect, isAdmin, async (req, res) => {
+// Get single assignment by id — admin: qualsiasi assegnazione. Dipendente: solo le proprie.
+router.get("/:id", protect, async (req, res) => {
   try {
     const { id } = req.params;
-    const user = await findUserById(id);
-    if (!user) {
-      return res.status(404).json({ ok: false, error: "Utente non trovato" });
+    const assignment = await findAssignmentById(id);
+    if (!assignment) {
+      return res.status(404).json({ ok: false, error: "Assegnazione non trovata" });
     }
-    return res.status(200).json({ ok: true, user });
+
+    if (!req.user.isAdmin && assignment.employee_id !== req.user.sub) {
+      return res.status(403).json({ ok: false, error: "Accesso non autorizzato" });
+    }
+
+    return res.status(200).json({ ok: true, assignment });
   } catch (err) {
-    console.error("GET SINGLE USER BY ID ERROR:", err);
+    console.error("GET SINGLE ASSIGNMENT BY ID ERROR:", err);
     return res.status(500).json({ ok: false, error: "Errore interno del server" });
   }
 });
 
-// Create User
+// Create Assignment — lo stato iniziale è sempre 'assigned' (default del DB):
+// i cambi di stato passano da /complete e /cancel.
 router.post("/", protect, isAdmin, async (req, res) => {
   try {
-    const { email, password, isAdmin, first_name, last_name } = req.body;
+    const { course_id, employee_id, due_date } = req.body;
+    const assigned_at = req.body.assigned_at || today();
 
-    // Validazione base dei campi
-    if (!email || !password || typeof isAdmin !== "boolean") {
+    // Validazione base dei campi (assigned_at è opzionale: default a oggi)
+    if (!course_id || !employee_id || !due_date) {
       return res.status(400).json({
         ok: false,
-        error: "Campi obbligatori mancanti: email, password, tipo utente",
+        error: "Campi obbligatori mancanti: course_id, employee_id, due_date",
       });
     }
 
-    // Validazione nome e cognome
-    if (!validateName(first_name) || !validateName(last_name)) {
+    // Validazione corso
+    if (!UUID_REGEX.test(course_id)) {
       return res.status(400).json({
         ok: false,
-        error: "Nome e cognome sono obbligatori (minimo 2 caratteri, solo lettere, spazi, apostrofi e trattini)",
+        error: "Corso non valido",
       });
     }
 
-    // Validazione email
-    if (!validateEmail(email)) {
+    // Validazione dipendente
+    if (!UUID_REGEX.test(employee_id)) {
       return res.status(400).json({
         ok: false,
-        error: "Formato email non valido: deve essere nel formato testo@dominio.tld",
+        error: "Dipendente non valido",
       });
     }
 
-    // Validazione password
-    const passwordErrors = validatePassword(password);
-    if (passwordErrors.length > 0) {
+    // Validazione data di assegnazione
+    if (!isValidDate(assigned_at)) {
       return res.status(400).json({
         ok: false,
-        error: passwordErrors,
+        error: "Data di assegnazione non valida: formato richiesto AAAA-MM-GG",
       });
     }
 
-    const existingUser = await findUserByEmail(email);
-    if (existingUser) {
+    // Validazione data di scadenza
+    if (!isValidDate(due_date)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Data di scadenza non valida: formato richiesto AAAA-MM-GG",
+      });
+    }
+
+    if (due_date < assigned_at) {
+      return res.status(400).json({
+        ok: false,
+        error: "La data di scadenza non può precedere la data di assegnazione",
+      });
+    }
+
+    const course = await findCourseById(course_id);
+    if (!course) {
+      return res.status(400).json({ ok: false, error: "Corso non trovato" });
+    }
+    if (!course.active) {
+      return res.status(400).json({
+        ok: false,
+        error: "Impossibile assegnare un corso disabilitato",
+      });
+    }
+
+    const employee = await findUserById(employee_id);
+    if (!employee) {
+      return res.status(400).json({ ok: false, error: "Dipendente non trovato" });
+    }
+
+    const openAssignment = await findOpenAssignmentByCourseAndEmployee(course_id, employee_id);
+    if (openAssignment) {
       return res.status(409).json({
         ok: false,
-        error: "Email già in uso",
+        error: "Il corso è già assegnato a questo dipendente ed è ancora da completare",
       });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const user = await createNewUser(
-      email,
-      hashedPassword,
-      isAdmin,
-      first_name.trim(),
-      last_name.trim()
+    const assignment = await createNewAssignment(
+      course_id,
+      employee_id,
+      assigned_at,
+      due_date
     );
-    return res.status(201).json({ ok: true, user });
+    return res.status(201).json({ ok: true, assignment });
   } catch (err) {
-    console.error("CREATE USER ERROR:", err);
+    console.error("CREATE ASSIGNMENT ERROR:", err);
     return res.status(500).json({ ok: false, error: "Errore interno del server" });
   }
 });
 
-// Update User by ID
+// Update Assignment by ID — modifica corso, dipendente e date.
+// Lo stato NON si tocca qui: cambia solo tramite /complete e /cancel.
 router.put("/:id", protect, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
-    const { email, password, isAdmin, first_name, last_name } = req.body;
+    const { course_id, employee_id, due_date } = req.body;
+    const assigned_at = req.body.assigned_at || today();
 
-    if (String(req.user.sub) === id && req.user.isAdmin && isAdmin === false) {
-      return res.status(403).json({
-        ok: false,
-        error: "Non puoi rimuovere i privilegi di amministratore dal tuo account.",
-      });
-    }
-
-    // Validazione base dei campi (email obbligatoria, password opzionale ma se presente deve essere valida)
-    if (!email || typeof isAdmin !== "boolean") {
+    // Validazione base dei campi (assigned_at è opzionale: default a oggi)
+    if (!course_id || !employee_id || !due_date) {
       return res.status(400).json({
         ok: false,
-        error: "Campi obbligatori mancanti: email, tipo utente",
+        error: "Campi obbligatori mancanti: course_id, employee_id, due_date",
       });
     }
 
-    // Validazione nome e cognome
-    if (!validateName(first_name) || !validateName(last_name)) {
+    // Validazione corso
+    if (!UUID_REGEX.test(course_id)) {
       return res.status(400).json({
         ok: false,
-        error: "Nome e cognome sono obbligatori (minimo 2 caratteri, solo lettere, spazi, apostrofi e trattini)",
+        error: "Corso non valido",
       });
     }
 
-    // Validazione email
-    if (!validateEmail(email)) {
+    // Validazione dipendente
+    if (!UUID_REGEX.test(employee_id)) {
       return res.status(400).json({
         ok: false,
-        error: "Formato email non valido: deve essere nel formato testo@dominio.tld",
+        error: "Dipendente non valido",
       });
     }
 
-    // Email già usata da un altro utente
-    const existingUser = await findUserByEmail(email);
-    if (existingUser && String(existingUser.id) !== id) {
+    // Validazione data di assegnazione
+    if (!isValidDate(assigned_at)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Data di assegnazione non valida: formato richiesto AAAA-MM-GG",
+      });
+    }
+
+    // Validazione data di scadenza
+    if (!isValidDate(due_date)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Data di scadenza non valida: formato richiesto AAAA-MM-GG",
+      });
+    }
+
+    if (due_date < assigned_at) {
+      return res.status(400).json({
+        ok: false,
+        error: "La data di scadenza non può precedere la data di assegnazione",
+      });
+    }
+
+    const existingAssignment = await findAssignmentById(id);
+    if (!existingAssignment) {
+      return res.status(404).json({ ok: false, error: "Assegnazione non trovata" });
+    }
+
+    // Un'assegnazione chiusa è storico: non si riapre modificandola
+    if (!isOpen(existingAssignment)) {
       return res.status(409).json({
         ok: false,
-        error: "Email già in uso",
+        error: "Impossibile modificare un'assegnazione già chiusa (completata, scaduta o annullata)",
       });
     }
 
-    let updateData = {
-      email,
-      isAdmin,
-      first_name: first_name.trim(),
-      last_name: last_name.trim(),
+    const course = await findCourseById(course_id);
+    if (!course) {
+      return res.status(400).json({ ok: false, error: "Corso non trovato" });
+    }
+    if (!course.active) {
+      return res.status(400).json({
+        ok: false,
+        error: "Impossibile assegnare un corso disabilitato",
+      });
+    }
+
+    const employee = await findUserById(employee_id);
+    if (!employee) {
+      return res.status(400).json({ ok: false, error: "Dipendente non trovato" });
+    }
+
+    // Stesso vincolo di unicità della creazione, escludendo l'assegnazione che si sta modificando
+    const openAssignment = await findOpenAssignmentByCourseAndEmployee(course_id, employee_id);
+    if (openAssignment && String(openAssignment.id) !== id) {
+      return res.status(409).json({
+        ok: false,
+        error: "Il corso è già assegnato a questo dipendente ed è ancora da completare",
+      });
+    }
+
+    const updateData = {
+      course_id,
+      employee_id,
+      assigned_at,
+      due_date,
     };
 
-    if (password) {
-      const passwordErrors = validatePassword(password);
-      if (passwordErrors.length > 0) {
-        return res.status(400).json({
-          ok: false,
-          error: passwordErrors,
-        });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 10);
-      updateData.password = hashedPassword;
-    }
-
-    const user = await updateUserById(id, updateData);
-    if (!user) {
-      return res.status(404).json({ ok: false, error: "Utente non trovato" });
-    }
-    return res.status(200).json({ ok: true, user });
+    const assignment = await updateAssignmentById(id, updateData);
+    return res.status(200).json({ ok: true, assignment });
   } catch (err) {
-    console.error("UPDATE USER BY ID ERROR:", err);
+    console.error("UPDATE ASSIGNMENT BY ID ERROR:", err);
     return res.status(500).json({ ok: false, error: "Errore interno del server" });
   }
 });
 
-// Delete User by ID
+// Delete Assignment by ID
 router.delete("/:id", protect, isAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
-    const user = await deleteUserById(id);
-    if (!user) {
-      return res.status(404).json({ ok: false, error: "Utente non trovato" });
+    const assignment = await deleteAssignmentById(id);
+    if (!assignment) {
+      return res.status(404).json({ ok: false, error: "Assegnazione non trovata" });
     }
-    return res.status(200).json({ ok: true, user });
+    return res.status(200).json({ ok: true, assignment });
   } catch (err) {
-    console.error("DELETE USER BY ID ERROR:", err);
+    console.error("DELETE ASSIGNMENT BY ID ERROR:", err);
+    return res.status(500).json({ ok: false, error: "Errore interno del server" });
+  }
+});
+
+// Complete an assignment by ID (assigned → completed)
+// Admin: qualsiasi assegnazione. Dipendente: solo le proprie.
+router.put("/:id/complete", protect, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const completed_at = req.body.completed_at || today();
+
+    const existingAssignment = await findAssignmentById(id);
+    if (!existingAssignment) {
+      return res.status(404).json({ ok: false, error: "Assegnazione non trovata" });
+    }
+
+    if (!req.user.isAdmin && existingAssignment.employee_id !== req.user.sub) {
+      return res.status(403).json({ ok: false, error: "Accesso non autorizzato" });
+    }
+
+    if (!isOpen(existingAssignment)) {
+      return res.status(409).json({
+        ok: false,
+        error: "Impossibile completare un'assegnazione già chiusa (completata, scaduta o annullata)",
+      });
+    }
+
+    if (!isValidDate(completed_at)) {
+      return res.status(400).json({
+        ok: false,
+        error: "Data di completamento non valida: formato richiesto AAAA-MM-GG",
+      });
+    }
+
+    if (completed_at < existingAssignment.assigned_at) {
+      return res.status(400).json({
+        ok: false,
+        error: "La data di completamento non può precedere la data di assegnazione",
+      });
+    }
+
+    const assignment = await updateAssignmentById(id, {
+      status: "completed",
+      completed_at,
+    });
+    return res.status(200).json({ ok: true, assignment });
+  } catch (err) {
+    console.error("COMPLETE ASSIGNMENT BY ID ERROR:", err);
+    return res.status(500).json({ ok: false, error: "Errore interno del server" });
+  }
+});
+
+// Cancel an assignment by ID (assigned → cancelled). Solo admin.
+router.put("/:id/cancel", protect, isAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const existingAssignment = await findAssignmentById(id);
+    if (!existingAssignment) {
+      return res.status(404).json({ ok: false, error: "Assegnazione non trovata" });
+    }
+
+    if (!isOpen(existingAssignment)) {
+      return res.status(409).json({
+        ok: false,
+        error: "Impossibile annullare un'assegnazione già chiusa (completata, scaduta o annullata)",
+      });
+    }
+
+    const assignment = await updateAssignmentById(id, { status: "cancelled" });
+    return res.status(200).json({ ok: true, assignment });
+  } catch (err) {
+    console.error("CANCEL ASSIGNMENT BY ID ERROR:", err);
     return res.status(500).json({ ok: false, error: "Errore interno del server" });
   }
 });

@@ -284,6 +284,126 @@
       ]
     },
     {
+      "name": "Assignments",
+      "description": "Lettura e completamento sono accessibili a qualsiasi utente autenticato, ma un dipendente vede e completa solo le proprie assegnazioni. Le rotte di gestione (crea, aggiorna, elimina, annulla) richiedono un admin.",
+      "item": [
+        {
+          "name": "Lista assegnazioni",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments?status=assigned&category=Compliance&course_id=&employee_id=",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments"],
+              "query": [
+                { "key": "status", "value": "assigned", "disabled": true, "description": "assigned | completed | expired | cancelled" },
+                { "key": "category", "value": "Compliance", "disabled": true, "description": "Categoria del corso collegato" },
+                { "key": "course_id", "value": "", "disabled": true, "description": "uuid del corso" },
+                { "key": "employee_id", "value": "", "disabled": true, "description": "uuid del dipendente — solo admin, ignorato per i dipendenti" }
+              ]
+            },
+            "description": "Filtri tutti opzionali. Stato fuori whitelist o uuid malformato: 400."
+          }
+        },
+        {
+          "name": "Dettaglio assegnazione",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", ":id"],
+              "variable": [{ "key": "id", "value": "", "description": "uuid dell'assegnazione" }]
+            },
+            "description": "403 se un dipendente richiede un'assegnazione non sua."
+          }
+        },
+        {
+          "name": "Crea assegnazione",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"course_id\": \"\",\n    \"employee_id\": \"\",\n    \"assigned_at\": \"2026-07-14\",\n    \"due_date\": \"2026-09-30\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/assignments",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments"]
+            },
+            "description": "Solo admin. assigned_at è opzionale (default: oggi). Lo stato iniziale è sempre 'assigned'. 400 se il corso è disabilitato o le date non sono coerenti; 409 se il corso è già assegnato a quel dipendente ed è ancora aperto."
+          }
+        },
+        {
+          "name": "Aggiorna assegnazione",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"course_id\": \"\",\n    \"employee_id\": \"\",\n    \"assigned_at\": \"2026-07-14\",\n    \"due_date\": \"2026-10-31\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/assignments/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", ":id"],
+              "variable": [{ "key": "id", "value": "", "description": "uuid dell'assegnazione" }]
+            },
+            "description": "Solo admin. Lo stato non è modificabile da qui: usare Completa o Annulla. 409 se l'assegnazione è già chiusa."
+          }
+        },
+        {
+          "name": "Elimina assegnazione",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/:id",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", ":id"],
+              "variable": [{ "key": "id", "value": "", "description": "uuid dell'assegnazione" }]
+            },
+            "description": "Solo admin."
+          }
+        },
+        {
+          "name": "Completa assegnazione",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"completed_at\": \"2026-08-01\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/assignments/:id/complete",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", ":id", "complete"],
+              "variable": [{ "key": "id", "value": "", "description": "uuid dell'assegnazione" }]
+            },
+            "description": "assigned -> completed. Un dipendente può completare solo le proprie assegnazioni (403 altrimenti). completed_at è opzionale (default: oggi). 409 se l'assegnazione è già chiusa."
+          }
+        },
+        {
+          "name": "Annulla assegnazione",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/assignments/:id/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["assignments", ":id", "cancel"],
+              "variable": [{ "key": "id", "value": "", "description": "uuid dell'assegnazione" }]
+            },
+            "description": "Solo admin. assigned -> cancelled. 409 se l'assegnazione è già chiusa."
+          }
+        }
+      ]
+    },
+    {
       "name": "Utility",
       "item": [
         {

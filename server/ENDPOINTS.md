@@ -85,15 +85,31 @@ Tutte le rotte richiedono autenticazione **e privilegi di amministratore** (`isA
 
 ## Assignment — `/assignments`
 
-Tutte le rotte richiedono autenticazione **e privilegi di amministratore** (`isAdmin: true`).
+Tutte le rotte richiedono autenticazione. Le rotte di gestione (creazione, modifica, eliminazione, annullamento) richiedono anche privilegi di amministratore (`isAdmin: true`). Lettura e completamento sono accessibili anche ai dipendenti, ma **solo sulle proprie assegnazioni**.
 
-- `GET /assignment` — Elenco di tutte le assegnazioni con filtri.
-- `GET /assignment/:id` — Singola assegnazione per ID.
-- `POST /assignment` — Crea una nuova assegnazione.
-- `PUT /assignment/:id` — Aggiorna un'assegnazione.
-- `DELETE /assignment/:id` — Elimina un'assegnazione.
-- `PUT /assignment/:id/complete` - Completamento di un'assegnazione
-- `PUT /assignment/:id/cancel` - Annullamento di un'assegnazione
+**Ciclo di vita** — un'assegnazione nasce `assigned`; da lì passa a `completed` (via `/complete`) o `cancelled` (via `/cancel`). `expired` è lo stato delle assegnazioni scadute. Gli stati `completed`, `expired` e `cancelled` sono **finali**: un'assegnazione chiusa non si modifica e non cambia più stato (`409`).
+
+- `GET /assignments` — Elenco assegnazioni. **Protetta** (qualsiasi utente autenticato): un admin vede tutte le assegnazioni, un dipendente vede solo le proprie. Ogni riga include il corso (`course`) e il dipendente (`employee`) collegati.
+
+  Filtri opzionali in query string (convenzioni in [`FILTERS_BE.md`](./FILTERS_BE.md)):
+
+  | Parametro     | Esempio      | Note                                                                                                   |
+  | ------------- | ------------ | ------------------------------------------------------------------------------------------------------ |
+  | `status`      | `assigned`   | Whitelist: `assigned`, `completed`, `expired`, `cancelled`. Valore fuori whitelist → `400`.             |
+  | `category`    | `Compliance` | Categoria del corso collegato (`E_Courses.category`).                                                   |
+  | `course_id`   | uuid         | Corso collegato. Uuid malformato → `400`.                                                               |
+  | `employee_id` | uuid         | **Solo admin**: per un dipendente il filtro viene ignorato e forzato al proprio id. Uuid malformato → `400`. |
+
+  Esempio: `GET /assignments?status=assigned&category=Compliance`
+
+- `GET /assignments/:id` — Singola assegnazione per ID. **Protetta**: stessa regola di visibilità dell'elenco; `404` se non esiste, `403` se un dipendente richiede un'assegnazione non sua.
+- `POST /assignments` — Crea una nuova assegnazione. **Solo admin.** Body: `course_id`, `employee_id`, `due_date` obbligatori; `assigned_at` opzionale (default: oggi). Lo stato iniziale è sempre `assigned`: non si passa nel body.
+  - `400` se un uuid o una data è malformata, se `due_date` precede `assigned_at`, se il corso o il dipendente non esistono, o se il corso è disabilitato (`active = false`).
+  - `409` se quel corso è già assegnato a quel dipendente ed è ancora aperto (stato `assigned`). Le assegnazioni chiuse restano nello storico e non bloccano una nuova assegnazione dello stesso corso.
+- `PUT /assignments/:id` — Aggiorna corso, dipendente e date di un'assegnazione. **Solo admin.** Stesso body e stesse validazioni della creazione. Lo **stato non è modificabile** da qui: si cambia solo con `/complete` e `/cancel`. `404` se non esiste, `409` se l'assegnazione è già chiusa.
+- `DELETE /assignments/:id` — Elimina un'assegnazione. **Solo admin.** `404` se non esiste.
+- `PUT /assignments/:id/complete` — Completamento di un'assegnazione (`assigned → completed`). **Protetta**: un admin completa qualsiasi assegnazione, un dipendente solo le proprie (`403` altrimenti). Body: `completed_at` opzionale (default: oggi). `404` se non esiste, `409` se l'assegnazione è già chiusa, `400` se `completed_at` è malformata o precede `assigned_at`.
+- `PUT /assignments/:id/cancel` — Annullamento di un'assegnazione (`assigned → cancelled`). **Solo admin.** `404` se non esiste, `409` se l'assegnazione è già chiusa.
 
 ---
 
