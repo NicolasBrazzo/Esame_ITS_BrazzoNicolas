@@ -706,8 +706,5 @@ const EmployeeCoursesView = () => {
 export const Courses = () => {
   const { user } = useAuth();
 
-  // Una sola rotta, due esperienze: il referente academy gestisce il catalogo, il
-  // dipendente vede solo i corsi assegnati a lui (visibilità garantita dal backend,
-  // non solo dalla UI).
   return user?.isAdmin ? <AdminCoursesView /> : <EmployeeCoursesView />;
 };

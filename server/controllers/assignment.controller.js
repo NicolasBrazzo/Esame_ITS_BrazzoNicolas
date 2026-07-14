@@ -16,7 +16,6 @@ const { findUserById } = require("../models/user.model");
 
 const router = express.Router();
 
-// Stati ammessi per un'assegnazione (CHECK in E_CourseAssignments.status)
 const VALID_STATUSES = ["assigned", "completed", "expired", "cancelled"];
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -24,21 +23,9 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_REGEX = /^\d{4}-\d{2}$/;
 const YEAR_REGEX = /^\d{4}$/;
 
-// Le date del dominio sono `date` (non timestamp): il formato ISO YYYY-MM-DD si
-// confronta lessicograficamente, quindi le regole assigned_at/due_date/completed_at
-// si verificano con un normale <=.
 const isValidDate = (value) => DATE_REGEX.test(value) && !Number.isNaN(Date.parse(value));
-
 const today = () => new Date().toISOString().slice(0, 10);
-
-// Un'assegnazione è modificabile/completabile/annullabile solo finché è aperta:
-// da uno stato finale (completed, expired, cancelled) non si torna indietro.
-// Nota: un'assegnazione scaduta resta aperta sul DB (status = 'assigned'), quindi
-// un corso in ritardo si può ancora completare o annullare.
 const isOpen = (assignment) => assignment.status === "assigned";
-
-// 'expired' non viene mai scritto sul DB: un'assegnazione ancora aperta la cui
-// scadenza è passata viene presentata come scaduta solo in lettura.
 const isExpired = (assignment) =>
   assignment.status === "assigned" && assignment.due_date < today();
 
