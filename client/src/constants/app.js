@@ -56,29 +56,29 @@ export const MONTH_LABELS = {
 // --font-display e --font-data in index.css.
 export const HOME = {
   // eyebrow: "Gestione operativa",
-  titleStart: "La formazione",
-  titleAccent: "di una vera Accademy",
+  titleStart: "La formazione aziendale,",
+  titleAccent: "sempre sotto controllo.",
   subtitle:
-    "Utenti, ruoli e attività di ogni giorno in un unico registro ordinato. Accedi con il tuo account, o creane uno per iniziare a lavorare.",
+    "Corsi, scadenze e completamenti dei tuoi dipendenti in un unico registro ordinato. Accedi con il tuo account, o creane uno per iniziare a lavorare.",
   ctaPrimary: "Accedi",
   ctaSecondary: "Crea un account",
   ctaLogged: "Vai alla dashboard",
-  features: ["Autenticazione JWT", "Ruoli e permessi", "API documentate"],
+  features: ["Corsi obbligatori e facoltativi", "Scadenze monitorate", "Statistiche per categoria"],
   // Numeri della mini-dashboard dimostrativa (contenuto decorativo)
   stats: [
-    { value: 128, label: "Utenti attivi" },
-    { value: 342, label: "Attività oggi" },
-    { value: 27, label: "Report generati" },
+    { value: 46, label: "Corsi attivi" },
+    { value: 312, label: "Assegnazioni totali" },
+    { value: 89, label: "Completati questo mese" },
   ],
-  // Righe dimostrative della scheda "registro attività" (contenuto decorativo)
+  // Righe dimostrative della scheda "registro assegnazioni" (contenuto decorativo)
   ledger: {
-    title: "Registro attività",
-    protocol: "Prot. 2026/014",
+    title: "Registro assegnazioni",
+    protocol: "Ciclo 2026",
     rows: [
-      { time: "09:12", text: "Nuovo utente registrato", tag: "Utenti" },
-      { time: "09:47", text: "Anagrafica aggiornata", tag: "Archivio" },
-      { time: "10:31", text: "Permessi modificati", tag: "Ruoli" },
-      { time: "11:05", text: "Report mensile esportato", tag: "Report" },
+      { time: "09:12", text: "Sicurezza sul lavoro assegnato a Rossi", tag: "Sicurezza" },
+      { time: "09:47", text: "Corso GDPR completato", tag: "Compliance" },
+      { time: "10:31", text: "Excel avanzato in scadenza", tag: "Digitale" },
+      { time: "11:05", text: "Onboarding assegnato a nuovo assunto", tag: "HR" },
     ],
   },
 };

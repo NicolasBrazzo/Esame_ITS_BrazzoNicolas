@@ -37,8 +37,6 @@ const isCompletable = (status) => status === "assigned" || status === "expired";
 
 const CURRENT_YEAR = new Date().getFullYear();
 
-// Opzioni dei filtri sulla scadenza: le assegnazioni scadono a ridosso di oggi,
-// quindi l'anno si sceglie in una finestra di due anni indietro e due avanti.
 const YEAR_OPTIONS = Array.from({ length: 5 }, (_, i) => {
   const year = String(CURRENT_YEAR - 2 + i);
   return { value: year, label: year };

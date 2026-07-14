@@ -2,13 +2,13 @@ import { Fragment, useRef } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  BarChart3,
+  BookOpen,
   Check,
-  FileText,
+  ClipboardList,
   LayoutDashboard,
   Lock,
-  Settings,
   User,
-  Users,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -27,12 +27,13 @@ const prefersReducedMotion =
   typeof window !== "undefined" &&
   window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-// Voci della sidebar nella finestra dimostrativa (contenuto decorativo).
+// Voci della sidebar nella finestra dimostrativa (contenuto decorativo):
+// rispecchiano le pagine reali del gestionale (vedi Side.jsx).
 const MOCK_NAV = [
   { icon: LayoutDashboard, label: "Dashboard", active: true },
-  { icon: Users, label: "Utenti" },
-  { icon: FileText, label: "Report" },
-  { icon: Settings, label: "Impostazioni" },
+  { icon: BookOpen, label: "Corsi" },
+  { icon: ClipboardList, label: "Assegnazioni" },
+  { icon: BarChart3, label: "Statistiche" },
 ];
 
 // Hero pubblica del template ("/"): i testi vivono in src/constants/app.js
@@ -340,7 +341,7 @@ export const HomePage = () => {
                 <div>
                   <p className="text-sm font-semibold">Dashboard</p>
                   <p className="text-[11px] text-muted-foreground">
-                    Panoramica delle attività
+                    Panoramica corsi e assegnazioni
                   </p>
                 </div>
                 <span className="flex size-7 items-center justify-center rounded-full bg-muted">

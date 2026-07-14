@@ -2,9 +2,7 @@ const supabase = require("../config/db_connection");
 
 const TABLE_NAME = "E_CourseAssignments";
 
-// get all assignments — ogni filtro viene applicato solo se presente (vedi FILTERS_BE.md).
-// Il corso e il dipendente collegati vengono inclusi nella riga: `!inner` serve a filtrare
-// per `course.category` (le due FK sono NOT NULL, quindi l'inner join non scarta righe).
+// get all assignments — ogni filtro viene applicato solo se presente.
 const findAllAssignments = async (filters = {}) => {
   let query = supabase
     .from(TABLE_NAME)
@@ -20,10 +18,6 @@ const findAllAssignments = async (filters = {}) => {
   if (filters.employee_id) query = query.eq("employee_id", filters.employee_id);
   if (filters.category) query = query.eq("course.category", filters.category);
 
-  // Filtri sulla scadenza. due_before/due_from servono al controller per distinguere
-  // le assegnazioni ancora aperte da quelle scadute (lo stato 'expired' è derivato,
-  // non persistito); due_month restringe al mese di scadenza richiesto (AAAA-MM),
-  // due_year all'intero anno (AAAA).
   if (filters.due_before) query = query.lt("due_date", filters.due_before);
   if (filters.due_from) query = query.gte("due_date", filters.due_from);
   if (filters.due_month) {
@@ -65,8 +59,6 @@ const findAssignmentById = async (id) => {
 };
 
 // find an assignment still open (status = 'assigned') for a course/employee pair.
-// Usata per il vincolo di unicità: lo stesso corso non si riassegna a un dipendente
-// che ce l'ha ancora da completare (le assegnazioni chiuse restano nello storico).
 const findOpenAssignmentByCourseAndEmployee = async (courseId, employeeId) => {
   const { data, error } = await supabase
     .from(TABLE_NAME)
