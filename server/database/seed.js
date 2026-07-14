@@ -18,7 +18,7 @@ const supabase = require("../config/db_connection");
 // Non importiamo config/jwt.js (fail-fast su JWT_SECRET, qui non serve)
 const SALT_ROUNDS = Number(process.env.SALT_ROUNDS) || 10;
 
-const USERS_TABLE = "T_Users";
+const USERS_TABLE = "E_Users";
 
 // Utenti di test: 1 admin + 2 utenti ordinari (due servono a dimostrare le
 // regole di visibilità: ogni utente vede solo i propri dati di dominio).

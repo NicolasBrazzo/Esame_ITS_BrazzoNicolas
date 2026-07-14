@@ -9,16 +9,10 @@ import { APP_NAME, APP_LOGO, HOME, NOT_FOUND } from "../constants/app";
 
 gsap.registerPlugin(useGSAP);
 
-// Pagina 404 (rotta catch-all "*"): intercetta gli URL non gestiti e riporta
-// l'utente in carreggiata. I testi vivono in src/constants/app.js (NOT_FOUND);
-// lo stile riusa i token shadcn condivisi del gestionale in light mode.
-// L'animazione d'ingresso gira solo se l'utente non ha chiesto "riduci movimento".
 export const NotFound = () => {
   const scope = useRef(null);
   const { user } = useAuth();
 
-  // Bottone secondario coerente con la HomePage: se loggato porta alla
-  // dashboard, altrimenti al login.
   const authTo = user ? "/dashboard" : "/login";
 
   useGSAP(
@@ -38,8 +32,6 @@ export const NotFound = () => {
   );
 
   return (
-    // La pagina usa i token shadcn condivisi del gestionale in light mode
-    // (nessuna classe "dark", nessuna palette a parte).
     <div
       ref={scope}
       className="relative flex min-h-screen flex-col overflow-hidden bg-background text-foreground"
@@ -54,7 +46,6 @@ export const NotFound = () => {
       </header>
 
       <main className="relative z-10 mx-auto flex w-full max-w-3xl flex-1 flex-col items-center justify-center px-6 pb-16 text-center">
-        {/* Grande numero decorativo: font display, gradiente sui token. */}
         <span
           aria-hidden="true"
           className="js-404 bg-linear-to-b from-foreground to-foreground/40 bg-clip-text font-display text-[clamp(6rem,22vw,12rem)] font-bold leading-none tracking-tight text-transparent"
@@ -62,8 +53,6 @@ export const NotFound = () => {
           {NOT_FOUND.code}
         </span>
 
-        {/* Le regole globali h2 di index.css (24px/700) stanno fuori dai layer
-            e vincono sulle utility Tailwind: per questo size e peso usano "!". */}
         <h2 className="js-title mt-6 font-sans text-3xl! font-semibold! tracking-tight">
           {NOT_FOUND.title}
         </h2>
