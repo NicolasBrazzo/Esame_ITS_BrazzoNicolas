@@ -1,17 +1,60 @@
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
-import { UserCog, ArrowRight, Rocket } from "lucide-react";
+import {
+  UserCog,
+  ArrowRight,
+  BookOpen,
+  Users,
+  Trophy,
+  PlayCircle,
+  CheckCircle2,
+  AlertTriangle,
+} from "lucide-react";
 
 import { fetchUsers } from "../services/userService";
+import { fetchCourses } from "../services/courseService";
+import { fetchAssignments } from "../services/assignmentService";
 import { useFetch } from "../hooks/useFetch";
 import { ROLE_LABELS } from "../constants/app";
+
+// Card KPI riusata da tutte le tessere della dashboard (stesso markup che c'era
+// già per "Utenti"): icona, numero in evidenza, etichetta e nota facoltativa.
+const KpiCard = ({ icon, value, label, description, isLoading, onClick }) => {
+  const Icon = icon;
+  return (
+    <div
+      className={`rounded-xl border bg-card p-5 shadow-sm transition-all ${
+        onClick ? "cursor-pointer hover:shadow-md hover:border-border/80 group" : ""
+      }`}
+      onClick={onClick}
+    >
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
+          <Icon className="h-4 w-4 text-muted-foreground" />
+        </div>
+        {isLoading ? (
+          <span className="text-xs text-muted-foreground">Caricamento...</span>
+        ) : (
+          onClick && (
+            <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+          )
+        )}
+      </div>
+      <p className="text-2xl font-semibold">{value}</p>
+      <p className="text-sm font-medium text-muted-foreground mt-0.5">{label}</p>
+      {description && (
+        <p className="mt-3 text-xs text-muted-foreground">{description}</p>
+      )}
+    </div>
+  );
+};
 
 export const Dashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
 
-  // Le anagrafiche utenti servono solo agli admin: se non lo è,
-  // restituiamo una lista vuota senza chiamare il server (sostituisce "enabled").
+  // Le anagrafiche utenti e il catalogo corsi servono solo agli admin: se non lo
+  // è, restituiamo una lista vuota senza chiamare il server.
   const {
     data: users,
     isLoading: loadingUsers,
@@ -21,10 +64,56 @@ export const Dashboard = () => {
     [user?.isAdmin],
   );
 
+  const {
+    data: courses,
+    isLoading: loadingCourses,
+    error: coursesError,
+  } = useFetch(
+    () => (user?.isAdmin ? fetchCourses() : Promise.resolve([])),
+    [user?.isAdmin],
+  );
+
+  // Le assegnazioni bastano per entrambi i ruoli: il backend le restituisce già
+  // filtrate (un dipendente vede solo le proprie, un admin le vede tutte).
+  const {
+    data: assignments,
+    isLoading: loadingAssignments,
+    error: assignmentsError,
+  } = useFetch(() => fetchAssignments(), [user?.isAdmin]);
+
   if (loading) return <p>loading...</p>;
   if (!user) return <p>Accesso negato</p>;
 
   const totalUsers = users?.length ?? 0;
+  const totalCourses = courses?.length ?? 0;
+  const allAssignments = assignments || [];
+
+  // Dipendente: quante assegnazioni sono ancora aperte, quante completate e
+  // quante scadute (stato derivato dal backend, non serve ricalcolarlo qui).
+  const inProgressCount = allAssignments.filter((a) => a.status === "assigned").length;
+  const completedCount = allAssignments.filter((a) => a.status === "completed").length;
+  const expiredCount = allAssignments.filter((a) => a.status === "expired").length;
+
+  // Admin: corso con più partecipanti, contando le assegnazioni per corso.
+  const participationByCourse = new Map();
+  allAssignments.forEach((a) => {
+    const courseId = a.course?.id ?? a.course_id;
+    if (!courseId) return;
+    const entry = participationByCourse.get(courseId) ?? {
+      title: a.course?.title || "—",
+      count: 0,
+    };
+    entry.count += 1;
+    participationByCourse.set(courseId, entry);
+  });
+  let mostPopularCourse = null;
+  for (const entry of participationByCourse.values()) {
+    if (!mostPopularCourse || entry.count > mostPopularCourse.count) {
+      mostPopularCourse = entry;
+    }
+  }
+
+  const dashboardError = usersError || coursesError || assignmentsError;
 
   return (
     <div className="px-6 py-6 space-y-8">
@@ -46,53 +135,75 @@ export const Dashboard = () => {
         </p>
       </div>
 
-      {usersError && (
+      {dashboardError && (
         <div className="rounded-md bg-destructive/10 px-4 py-3 text-sm text-destructive ring-1 ring-inset ring-destructive/20">
           Si è verificato un errore nel caricamento dei dati della dashboard.
         </div>
       )}
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {user?.isAdmin && (
-          <div
-            className="cursor-pointer rounded-xl border bg-card p-5 shadow-sm transition-all hover:shadow-md hover:border-border/80 group"
+      {user.isAdmin ? (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          <KpiCard
+            icon={UserCog}
+            value={totalUsers}
+            label="Utenti"
+            description="Gestione degli account con accesso alla piattaforma."
+            isLoading={loadingUsers}
             onClick={() => navigate("/users")}
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                <UserCog className="h-4 w-4 text-muted-foreground" />
-              </div>
-              {loadingUsers ? (
-                <span className="text-xs text-muted-foreground">Caricamento...</span>
-              ) : (
-                <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-              )}
-            </div>
-            <p className="text-2xl font-semibold">{totalUsers}</p>
-            <p className="text-sm font-medium text-muted-foreground mt-0.5">Utenti</p>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Gestione degli account con accesso alla piattaforma.
-            </p>
-          </div>
-        )}
-
-        {/* Card segnaposto: sostituire con le statistiche del dominio del progetto */}
-        <div className="rounded-xl border border-dashed bg-card p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-              <Rocket className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </div>
-          <p className="text-sm font-medium text-muted-foreground">
-            Il tuo gestionale parte da qui
-          </p>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Aggiungi le risorse del tuo dominio seguendo la ricetta in
-            ADDING_A_RESOURCE.md, poi sostituisci questa card con le statistiche
-            reali del progetto.
-          </p>
+          />
+          <KpiCard
+            icon={BookOpen}
+            value={totalCourses}
+            label="Corsi totali"
+            description="Corsi presenti nel catalogo dell'academy."
+            isLoading={loadingCourses}
+            onClick={() => navigate("/courses")}
+          />
+          <KpiCard
+            icon={Users}
+            value={allAssignments.length}
+            label="Partecipanti ai corsi"
+            description="Numero totale di assegnazioni corso-dipendente."
+            isLoading={loadingAssignments}
+            onClick={() => navigate("/assignments")}
+          />
+          <KpiCard
+            icon={Trophy}
+            value={mostPopularCourse?.count ?? 0}
+            label={mostPopularCourse?.title ?? "Nessuna assegnazione"}
+            description="Corso più popoloso per numero di partecipanti."
+            isLoading={loadingAssignments}
+            onClick={() => navigate("/assignments")}
+          />
         </div>
-      </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <KpiCard
+            icon={PlayCircle}
+            value={inProgressCount}
+            label="Corsi in corso"
+            description="Corsi assegnati ancora da completare."
+            isLoading={loadingAssignments}
+            onClick={() => navigate("/courses")}
+          />
+          <KpiCard
+            icon={CheckCircle2}
+            value={completedCount}
+            label="Corsi completati"
+            description="Corsi che hai portato a termine."
+            isLoading={loadingAssignments}
+            onClick={() => navigate("/courses")}
+          />
+          <KpiCard
+            icon={AlertTriangle}
+            value={expiredCount}
+            label="Corsi scaduti"
+            description="Corsi con scadenza superata e non ancora completati."
+            isLoading={loadingAssignments}
+            onClick={() => navigate("/courses")}
+          />
+        </div>
+      )}
     </div>
   );
 };
