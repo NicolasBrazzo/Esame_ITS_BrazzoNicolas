@@ -7,6 +7,21 @@ deployato: è lo stesso usato in locale).
 **Ordine**: prima il backend (serve il suo URL per configurare il frontend),
 poi il frontend, poi si torna su Railway per il CORS.
 
+---
+
+## Deploy attuale (consegna esame)
+
+| Servizio | URL |
+|---|---|
+| Frontend (Vercel) | https://esame-its-brazzo-nicolas.vercel.app |
+| Backend (Railway) | https://esameitsbrazzonicolas-production.up.railway.app |
+| Health check | https://esameitsbrazzonicolas-production.up.railway.app/health |
+
+Entrambi verificati raggiungibili (`/health` → `200 {"status":"ok"}`, refresh
+su `/dashboard` → `200`, nessun 404). Il resto di questo file è la procedura
+generica seguita per arrivarci — utile per un redeploy da zero, non per uso
+quotidiano.
+
 > Prerequisiti: repo pushato su GitHub; account Railway e Vercel collegati a GitHub. 
 > Su Railway verificare di avere **crediti/trial attivi** — farlo il giorno prima, non scoprirlo durante la consegna.
 
@@ -68,22 +83,3 @@ Il seed si lancia **in locale** ma popola lo stesso Supabase usato dal deploy:
 cd server
 npm run seed
 ```
-
-Checklist (dall'URL Vercel, in incognito):
-
-- [ ] `https://<railway>/health` risponde `{"status":"ok"}`
-- [ ] Registrazione di un nuovo utente (nome, cognome, email, password) funziona
-- [ ] Logout e login con le credenziali di test del seed (`admin@test.it` / `Admin123!`)
-- [ ] Da admin: pagina Utenti visibile e CRUD funzionante
-- [ ] Refresh del browser su `/dashboard` → nessun 404
-- [ ] Collection Postman: cambia `baseUrl` con l'URL Railway e verifica login + una rotta protetta
-
-## Problemi tipici
-
-| Sintomo | Causa probabile |
-|---|---|
-| Il frontend mostra "Server non raggiungibile" | `VITE_API_URL` sbagliata (o cambiata senza redeploy), oppure backend Railway giù |
-| Errore CORS in console | `FRONTEND_URL` su Railway non coincide con l'URL Vercel (occhio a https e slash finale) |
-| 404 al refresh su una rotta interna | manca `client/vercel.json` (rewrite SPA) |
-| Il backend crasha all'avvio | variabile mancante: `config/jwt.js` e `db_connection.js` fanno fail-fast su `JWT_SECRET` / `SUPABASE_*` |
-| Login ok in locale ma non online | seed non eseguito sul DB giusto, o `JWT_SECRET` diverso non c'entra (il token si rigenera al login) — controlla i log Railway |
